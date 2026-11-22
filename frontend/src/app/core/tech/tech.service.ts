@@ -13,6 +13,8 @@ import { AuthService } from '../auth/auth.service';
   Jawabannya tidak terdokumentasi; pemetaan memakai toAdminReport (longgar).
   Tiap tab diminta 15 baris (per_page terbesar yang terdokumentasi); belum ada halaman berikutnya.
 */
+export type TechStatus = 'DIPROSES' | 'SELESAI' | 'MENUNGGU' | 'TIDAK_DAPAT_DIPERBAIKI';
+
 @Injectable({ providedIn: 'root' })
 export class TechService {
   private http = inject(HttpClient);
@@ -21,6 +23,8 @@ export class TechService {
   readonly me = computed(() => this.auth.user().name);
   readonly available = signal<AdminReport[]>([]);
   readonly mine = signal<AdminReport[]>([]);
+  // Gedung tanggung jawab teknisi: diambil dari tugas yang dikirim server (sudah disaring per cakupan gedung)
+  readonly building = computed(() => [...this.mine(), ...this.available()].find((r) => r.building)?.building ?? '');
   readonly all = computed(() => [...this.available(), ...this.mine()].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
 
   readonly stats = computed(() => {
@@ -56,15 +60,23 @@ export class TechService {
     await this.load();
   }
 
+  // ACCEPT = terima penugasan dari Admin Unit
+  async accept(uuid: string): Promise<void> {
+    await this.post('/api/reports/respond-assignment', uuid, { action: 'ACCEPT' });
+  }
+
   async reject(uuid: string, reason: string): Promise<void> {
     await this.post('/api/reports/respond-assignment', uuid, { action: 'REJECT', reject_reason: reason });
     await this.load();
   }
 
-  async setStatus(uuid: string, ticket: string, status: 'DIPROSES' | 'SELESAI', proof?: File | null): Promise<void> {
+  // Catatan penanganan (SELESAI) dikirim sebagai `notes`, alasan (MENUNGGU / TIDAK_DAPAT_DIPERBAIKI) sebagai `reason`.
+  // Nama kolom ini tebakan: dokumentasi API tidak menjelaskannya. Periksa saat terhubung ke backend.
+  async setStatus(uuid: string, ticket: string, status: TechStatus, opts: { proof?: File | null; note?: string } = {}): Promise<void> {
     const form = new FormData();
     form.append('status', status);
-    if (proof) { form.append('proof_photo', proof); this.proofs.update((p) => ({ ...p, [ticket]: URL.createObjectURL(proof) })); }
+    if (opts.note) form.append(status === 'SELESAI' ? 'notes' : 'reason', opts.note);
+    if (opts.proof) { form.append('proof_photo', opts.proof); this.proofs.update((p) => ({ ...p, [ticket]: URL.createObjectURL(opts.proof!) })); }
     await this.post('/api/reports/status', uuid, form);
     await this.load();
   }

@@ -1,9 +1,9 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
-import { ADMIN_STATUSES } from '../../core/admin/admin.service';
-import { ALL_STATUS_LABEL } from '../../core/reports/report.model';
-import { TechService } from '../../core/tech/tech.service';
-import { Icon } from '../icon/icon';
-import { ReportTable } from '../report-table/report-table';
+import { ADMIN_STATUSES } from '../../../../core/admin/admin.service';
+import { ALL_STATUS_LABEL } from '../../../../core/reports/report.model';
+import { TechService } from '../../../../core/tech/tech.service';
+import { Icon } from '../../../../shared/icon/icon';
+import { TaskTable } from '../task-table/task-table';
 
 export type TaskMode = 'all' | 'available' | 'mine';
 
@@ -11,7 +11,7 @@ export type TaskMode = 'all' | 'available' | 'mine';
 // Dipakai di Beranda teknisi dan halaman daftar tugas.
 @Component({
   selector: 'app-task-list',
-  imports: [Icon, ReportTable],
+  imports: [Icon, TaskTable],
   template: `
     <section class="card">
       <div class="tabs" role="tablist" aria-label="Jenis tugas">
@@ -30,10 +30,10 @@ export type TaskMode = 'all' | 'available' | 'mine';
           <select id="so" (change)="sort.set($any($event.target).value)"><option value="new">Terbaru</option><option value="old">Terlama</option><option value="likes">Suka terbanyak</option></select></div>
       </div>
 
-      <app-report-table [reports]="list()" base="/teknisi/tugas" [showLike]="true" [likeable]="false" [showDetail]="true" emptyText="Tidak ada tugas." />
+      <app-task-table [tasks]="list()" emptyText="Tidak ada tugas." />
     </section>
 
-    <p class="note"><strong style="font-size: 15px; font-weight: 600">Hanya tugas di gedung tanggung jawab Anda yang ditampilkan.</strong><br>
+    <p class="note"><strong style="font-size: 15px; font-weight: 600">Hanya tugas {{ tech.building() ? 'Gedung ' + tech.building() : 'di gedung tanggung jawab Anda' }} yang ditampilkan.</strong><br>
       <span class="sub">Mengambil tugas akan menetapkan Anda sebagai teknisi penanggung jawab.</span></p>
   `,
   styles: `

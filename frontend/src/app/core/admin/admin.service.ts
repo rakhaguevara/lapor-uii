@@ -18,7 +18,7 @@ export type AdminStatus = 'dikirim' | 'ditugaskan' | 'diproses' | 'menunggu' | '
 export const ADMIN_STATUSES: AdminStatus[] = ['dikirim', 'ditugaskan', 'diproses', 'menunggu', 'selesai', 'gagal'];
 
 export type AdminReport = Omit<Report, 'status'> & {
-  status: AdminStatus; priority: string; technician: string; technicianUuid: string; assignedAt: string; buildingUuid: string;
+  status: AdminStatus; priority: string; technician: string; technicianUuid: string; assignedAt: string; buildingUuid: string; updatedAt: string;
 };
 export interface Technician { uuid: string; name: string; active: number; buildings: string[] }
 export interface Building { id: string; name: string; code: string; faculty: string; floors: number; active: boolean }
@@ -61,6 +61,7 @@ export function toAdminReport(r: Raw): AdminReport {
     photoUrl: r['photo_url'] ?? '', status: toAdminStatus(r['status'], !!name), createdAt: r['created_at'],
     likes: r['like_count'] ?? 0, liked: !!r['is_liked'], priority: r['priority'] ?? 'NORMAL',
     technician: name, technicianUuid: t?.uuid ?? r['technician_uuid'] ?? '', assignedAt: r['assigned_at'] ?? r['assignment']?.assigned_at ?? '',
+    updatedAt: r['completed_at'] ?? r['updated_at'] ?? '',
   };
 }
 

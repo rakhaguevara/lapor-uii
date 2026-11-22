@@ -3,11 +3,12 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
+import { TechService } from '../../core/tech/tech.service';
 import { Icon, IconName } from '../../shared/icon/icon';
 import { AppHeader } from '../app-header/app-header';
 
 interface MenuItem { path: string; label: string; short: string; icon: IconName }
-interface RoleView { title: string; access: string; showType: boolean; menu: MenuItem[] }
+interface RoleView { title: string; access: string; showType: boolean; tag?: string; menu: MenuItem[] }
 
 const ROLES: Record<string, RoleView> = {
   PELAPOR: {
@@ -20,7 +21,7 @@ const ROLES: Record<string, RoleView> = {
     ],
   },
   TEKNISI: {
-    title: 'TEKNISI', access: 'Tugas sesuai cakupan gedung.', showType: false,
+    title: 'TEKNISI', access: 'Tugas sesuai cakupan gedung.', showType: false, tag: 'UII',
     menu: [
       { path: '/teknisi', label: 'Beranda', short: 'Beranda', icon: 'grid' },
       { path: '/teknisi/tugas', label: 'Semua tugas', short: 'Semua tugas', icon: 'list' },
@@ -71,8 +72,8 @@ const ROLES: Record<string, RoleView> = {
         </nav>
         <div class="access">
           <small>AKSES ANDA</small>
-          <strong>{{ user().role }}{{ role().showType && user().type ? ' · ' + user().type : '' }}</strong>
-          <p>{{ role().access }}</p>
+          <strong>{{ user().role }}{{ role().showType && user().type ? ' · ' + user().type : role().tag ? ' · ' + role().tag : '' }}</strong>
+          <p>@if (role().tag && building()) { {{ building() }}<br> }{{ role().access }}</p>
         </div>
       </aside>
 
@@ -92,8 +93,9 @@ const ROLES: Record<string, RoleView> = {
     }
   `,
   styles: `
-    .body { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: calc(100vh - var(--header-h)); }
-    .sidebar { display: flex; flex-direction: column; padding: 16px 16px 130px; background: var(--white); }
+    /* Desktop: body setinggi layar sisa header. Sidebar diam, hanya .main yang scroll. */
+    .body { display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: calc(100vh - var(--header-h)); overflow: hidden; }
+    .sidebar { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 16px 16px 24px; background: var(--white); }
     .side-title { padding: 0 8px; margin-bottom: 17px; color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: 0.02em; line-height: 1.5; }
     .sidebar nav { display: flex; flex-direction: column; gap: 8px; }
     .item { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border-radius: 8px; color: var(--ink); font-size: 13px; }
@@ -106,15 +108,15 @@ const ROLES: Record<string, RoleView> = {
     .access strong { display: block; margin: 4px 0 2px; font-size: 12px; font-weight: 600; }
     .access p { color: var(--muted); font-size: 12px; line-height: 1.5; }
 
-    .main { padding: 16px 32px 48px; min-width: 0; }
+    .main { min-height: 0; overflow-y: auto; padding: 16px 32px 48px; min-width: 0; }
 
     .bottom-nav { display: none; }
 
     /* HP: sembunyikan sidebar, tampilkan menu bawah */
     @media (max-width: 800px) {
-      .body { display: block; min-height: calc(100vh - 68px); }
+      .body { display: block; height: auto; overflow: visible; min-height: calc(100vh - 68px); }
       .sidebar { display: none; }
-      .main { padding: 40px 16px 96px; }
+      .main { overflow: visible; padding: 40px 16px 96px; }
       .body.no-bottom .main { padding-bottom: 32px; }
       .bottom-nav { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; position: fixed; inset: auto 0 0 0; height: 64px; background: var(--white); border-top: 1px solid var(--line); z-index: 20; }
       .bottom-nav a { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--muted); font-size: 11px; line-height: 1.2; }
@@ -128,6 +130,7 @@ export class Shell {
   private auth = inject(AuthService);
 
   user = this.auth.user;
+  building = inject(TechService).building;
 
   // true saat berada di halaman Portal (menu bawah disembunyikan)
   private url = toSignal(

@@ -183,7 +183,7 @@ app-page-head .actions .btn { min-width: 184px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .split { display: grid; grid-template-columns: minmax(0, 1fr) 383px; gap: 24px; align-items: start; }
 .split.wide { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
-.form-card { max-width: 752px; }
+.form-card { max-width: none; }
 .form-card .fields { display: flex; flex-direction: column; gap: 22px; margin-top: 22px; }
 .form-card .foot { display: flex; justify-content: space-between; gap: 16px; margin-top: 32px; }
 .form-card .foot .btn-primary { flex: 1; max-width: 220px; }
