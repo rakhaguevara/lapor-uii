@@ -5,6 +5,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
+import { mockInterceptor } from './core/mock/mock-api';
 
 // Daftarkan bahasa Indonesia agar tanggal tampil "18 Nov 2026", bukan versi Inggris
 registerLocaleData(localeId);
@@ -13,7 +14,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, mockInterceptor])),
     { provide: LOCALE_ID, useValue: 'id' },
   ],
 };

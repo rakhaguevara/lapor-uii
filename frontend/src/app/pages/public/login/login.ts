@@ -5,6 +5,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { AdminService } from '../../../core/admin/admin.service';
 import { TechService } from '../../../core/tech/tech.service';
 import { ReportService } from '../../../core/reports/report.service';
+import { DEMO } from '../../../core/mock/mock-api';
 import { AppHeader } from '../../../layout/app-header/app-header';
 
 /*
@@ -41,6 +42,15 @@ import { AppHeader } from '../../../layout/app-header/app-header';
 
         <button class="btn btn-primary" type="submit" [disabled]="busy()">{{ busy() ? 'Memproses…' : 'Masuk' }}</button>
         <a class="back" routerLink="/">← Kembali ke beranda</a>
+
+        @if (demo) {
+          <div class="demo" aria-label="Akun demo">
+            <p class="hint">Mode demo (tanpa backend). Masuk cepat sebagai:</p>
+            @for (a of accounts; track a.email) {
+              <button class="btn" type="button" (click)="quick(a.email, a.pw)">{{ a.label }}</button>
+            }
+          </div>
+        }
       </form>
     </main>
   `,
@@ -49,6 +59,9 @@ import { AppHeader } from '../../../layout/app-header/app-header';
     form { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 440px; padding: 32px; }
     h1 { font-size: 28px; line-height: 1.3; font-weight: 600; }
     .sub { margin-top: -12px; font-size: 15px; }
+    .demo { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .demo .hint { width: 100%; }
+    .demo .btn { min-height: 36px; padding: 0 14px; }
     .alert { padding: 12px 16px; border-radius: var(--r-ctl); background: var(--red-bg); color: var(--red); font-size: 14px; }
     .back { align-self: center; font-size: 14px; font-weight: 500; }
 
@@ -70,6 +83,17 @@ export class Login {
     email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
   });
+  demo = DEMO;
+  accounts = [
+    { label: 'Pelapor', email: 'aisyah@uii.ac.id', pw: 'password123' },
+    { label: 'Teknisi', email: 'budi@uii.ac.id', pw: 'teknisi123' },
+    { label: 'Admin Unit', email: 'admin@uii.ac.id', pw: 'admin123' },
+    { label: 'Admin Universitas', email: 'adminuniv@uii.ac.id', pw: 'univ12345' },
+  ];
+  quick(email: string, password: string): void {
+    this.form.setValue({ email, password });
+    this.submit();
+  }
   submitted = signal(false);
   failed = signal(false);
   busy = signal(false);
