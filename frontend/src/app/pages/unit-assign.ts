@@ -5,7 +5,8 @@ import { map } from 'rxjs';
 import { AdminService, Technician } from '../core/admin.service';
 import { PageHead } from '../shared/page-head';
 
-// TUGASKAN TEKNISI: pilih teknisi yang keahliannya cocok dengan kategori, tambah catatan, konfirmasi.
+// TUGASKAN TEKNISI: GET /reports/technicians?building_uuid= (teknisi di gedung laporan),
+// lalu POST /reports/assign. Kolom catatan di desain tidak punya kolom di API, jadi tidak dikirim.
 @Component({
   selector: 'app-unit-assign',
   imports: [RouterLink, PageHead],
@@ -20,28 +21,25 @@ import { PageHead } from '../shared/page-head';
           <p class="sub" style="margin: 8px 0 28px">{{ r.id }} · {{ r.category }} · {{ r.building }}</p>
 
           <div role="radiogroup" aria-label="Teknisi">
-            @for (t of techs; track t.name) {
-              <button type="button" class="opt" role="radio" [class.on]="pick() === t.name" [attr.aria-checked]="pick() === t.name"
-                [disabled]="!match(t)" (click)="pick.set(t.name)">
-                <span><strong>{{ t.name }}</strong><small>{{ match(t) ? r.category : t.skills[0] }} · {{ t.active }} tugas aktif</small></span>
-                <span class="tagr">{{ pick() === t.name ? 'Terpilih ✓' : match(t) ? '' : 'Keahlian berbeda' }}</span>
+            @for (t of techs(); track t.uuid) {
+              <button type="button" class="opt" role="radio" [class.on]="pick() === t.uuid" [attr.aria-checked]="pick() === t.uuid" (click)="pick.set(t.uuid)">
+                <span><strong>{{ t.name }}</strong><small>{{ t.buildings.join(', ') || r.building }} · {{ t.active }} tugas aktif</small></span>
+                <span class="tagr">{{ pick() === t.uuid ? 'Terpilih ✓' : '' }}</span>
               </button>
+            } @empty {
+              <p class="empty">{{ loading() ? 'Memuat teknisi…' : 'Belum ada teknisi aktif di gedung ini.' }}</p>
             }
           </div>
-
-          <div class="field" style="margin-top: 24px">
-            <label for="cat">Catatan penugasan (opsional)</label>
-            <textarea id="cat" rows="3" [value]="note()" (input)="note.set($any($event.target).value)" placeholder="Contoh: Mohon periksa sebelum perkuliahan siang dimulai."></textarea>
-          </div>
+          @if (error()) { <p class="error" role="alert" style="color: var(--red); font-size: 12px">{{ error() }}</p> }
 
           <div class="foot">
             <a class="btn" [routerLink]="['/unit/laporan', r.id]">Batal</a>
-            <button class="btn btn-primary" type="submit" [disabled]="!pick()">Konfirmasi penugasan</button>
+            <button class="btn btn-primary" type="submit" [disabled]="!pick() || busy()">Konfirmasi penugasan</button>
           </div>
         </form>
 
         <aside class="card panel">
-          <h2>Sesuai gedung dan keahlian</h2>
+          <h2>Sesuai gedung</h2>
           <p class="sub" style="margin-top: 24px; font-size: 13px">Hanya teknisi aktif dengan akses ke {{ r.building }} yang dapat ditugaskan.</p>
           <p class="sub" style="margin-top: 16px; font-size: 13px">Teknisi dapat mengembalikan penugasan dengan alasan.</p>
         </aside>
@@ -56,15 +54,31 @@ export class UnitAssign {
   private router = inject(Router);
   private id = toSignal(inject(ActivatedRoute).paramMap.pipe(map((p) => p.get('id') ?? '')), { initialValue: '' });
 
-  techs = this.admin.technicians;
   r = computed(() => this.admin.find(this.id()));
-  pick = signal(this.admin.assignments()[this.id()]?.tech ?? '');
-  note = signal('');
-  match = (t: Technician) => this.admin.skillMatch(t, this.r()?.category ?? '');
+  techs = signal<Technician[]>([]);
+  pick = signal('');
+  loading = signal(true);
+  busy = signal(false);
+  error = signal('');
 
-  confirm(): void {
-    if (!this.pick()) return;
-    this.admin.assign(this.id(), this.pick(), this.note().trim());
-    this.router.navigate(['/unit/laporan', this.id()], { queryParams: { tersimpan: 1 } });
+  constructor() {
+    const r = this.r();
+    this.admin.technicians(r?.buildingUuid ?? '')
+      .then((t) => { this.techs.set(t); const cur = t.find((x) => x.uuid === r?.technicianUuid); if (cur) this.pick.set(cur.uuid); })
+      .catch(() => this.error.set('Daftar teknisi belum bisa dimuat.'))
+      .finally(() => this.loading.set(false));
+  }
+
+  async confirm(): Promise<void> {
+    if (!this.pick() || this.busy()) return;
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.admin.assign(this.r()!.uuid, this.pick());
+      this.router.navigate(['/unit/laporan', this.id()], { queryParams: { tersimpan: 1 } });
+    } catch {
+      this.error.set('Penugasan belum tersimpan. Coba lagi.');
+    }
+    this.busy.set(false);
   }
 }

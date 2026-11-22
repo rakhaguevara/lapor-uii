@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { AdminService } from '../core/admin.service';
+import { TechService } from '../core/tech.service';
 import { ReportService } from '../core/report.service';
 import { AppHeader } from '../layout/app-header';
 
@@ -62,6 +63,7 @@ export class Login {
   private auth = inject(AuthService);
   private reports = inject(ReportService);
   private admin = inject(AdminService);
+  private tech = inject(TechService);
   private router = inject(Router);
 
   form = inject(FormBuilder).nonNullable.group({
@@ -86,7 +88,8 @@ export class Login {
     const { email, password } = this.form.getRawValue();
     if (await this.auth.login(email, password)) {
       // ambil data dari backend sebelum masuk portal (pelapor dan petugas butuh data berbeda)
-      await (this.auth.roleCode() === 'PELAPOR' ? this.reports.loadAll() : this.admin.load());
+      const role = this.auth.roleCode();
+      await (role === 'PELAPOR' ? this.reports.loadAll() : role === 'TEKNISI' ? this.tech.load() : this.admin.load(role));
       this.router.navigate(['/portal']);
     } else {
       this.failed.set(true);

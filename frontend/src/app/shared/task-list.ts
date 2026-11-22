@@ -33,7 +33,7 @@ export type TaskMode = 'all' | 'available' | 'mine';
       <app-report-table [reports]="list()" base="/teknisi/tugas" [showLike]="true" [likeable]="false" [showDetail]="true" emptyText="Tidak ada tugas." />
     </section>
 
-    <p class="note"><strong style="font-size: 15px; font-weight: 600">Hanya tugas {{ tech.scope() || 'di gedung tanggung jawab Anda' }} yang ditampilkan.</strong><br>
+    <p class="note"><strong style="font-size: 15px; font-weight: 600">Hanya tugas di gedung tanggung jawab Anda yang ditampilkan.</strong><br>
       <span class="sub">Mengambil tugas akan menetapkan Anda sebagai teknisi penanggung jawab.</span></p>
   `,
   styles: `

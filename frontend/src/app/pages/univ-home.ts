@@ -15,7 +15,7 @@ import { PageHead } from '../shared/page-head';
     <div class="stack">
       <section class="grid-4" aria-label="Ringkasan">
         <div class="card stat"><span>Gedung aktif</span><strong>{{ n().gedung }}</strong></div>
-        <div class="card stat"><span>Akun aktif</span><strong>{{ n().akun }}</strong></div>
+        <div class="card stat"><span>Akun staf aktif</span><strong>{{ n().akun }}</strong></div>
         <div class="card stat"><span>Teknisi</span><strong>{{ n().teknisi }}</strong></div>
         <div class="card stat"><span>Role akses</span><strong>{{ n().role }}</strong></div>
       </section>
@@ -49,7 +49,7 @@ export class UnivHome {
     return {
       gedung: this.admin.buildings().filter((b) => b.active).length,
       akun: acc.length,
-      teknisi: acc.filter((a) => a.role === 'Teknisi').length,
+      teknisi: acc.filter((a) => a.role === 'TEKNISI').length,
       role: new Set(acc.map((a) => a.role)).size,
     };
   });

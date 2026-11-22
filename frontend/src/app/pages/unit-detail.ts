@@ -1,9 +1,9 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
-import { AdminService } from '../core/admin.service';
+import { AdminService, PRIORITY_LABEL } from '../core/admin.service';
 import { ALL_STATUS_LABEL } from '../core/report.model';
 import { Icon } from '../shared/icon';
 import { PageHead } from '../shared/page-head';
@@ -44,6 +44,13 @@ import { StatusBadge } from '../shared/status-badge';
             @if (open()) {
               <a class="btn btn-primary" style="width: 100%" [routerLink]="['/unit/laporan', r.id, 'tugaskan']">{{ a() ? 'Ubah penugasan' : 'Tugaskan teknisi' }}</a>
             } @else { <p class="hint">Status laporan: {{ label(r.status) }}.</p> }
+            <div class="field" style="margin-top: 20px">
+              <label for="prio">Prioritas</label>
+              <select id="prio" [disabled]="!open()" (change)="setPriority($any($event.target).value)">
+                @for (p of priorities; track p[0]) { <option [value]="p[0]" [selected]="p[0] === r.priority">{{ p[1] }}</option> }
+              </select>
+              @if (error()) { <span class="error" role="alert">{{ error() }}</span> }
+            </div>
           </section>
 
           <section class="card panel">
@@ -51,7 +58,7 @@ import { StatusBadge } from '../shared/status-badge';
             <ol class="tl" style="margin-top: 24px">
               <li class="done"><strong>Dikirim</strong><small>{{ r.createdAt | date: 'd MMM · HH.mm' : '' : 'id' }}</small></li>
               @if (a(); as x) {
-                <li class="done"><strong>Ditugaskan ke {{ x.tech }}</strong><small>{{ x.at | date: 'd MMM · HH.mm' : '' : 'id' }} · {{ x.by }}{{ x.note ? ' · ' + x.note : '' }}</small></li>
+                <li class="done"><strong>Ditugaskan ke {{ x.tech }}</strong><small>{{ x.at ? (x.at | date: 'd MMM · HH.mm' : '' : 'id') : 'Penugasan tersimpan' }}</small></li>
               } @else {
                 <li><strong>Menunggu penugasan Admin Unit</strong><small>Menunggu penugasan teknisi</small></li>
               }
@@ -75,6 +82,12 @@ export class UnitDetail {
   label = (s: string) => ALL_STATUS_LABEL[s];
 
   r = computed(() => this.admin.find(this.id()));
-  a = computed(() => this.admin.assignments()[this.id()]);
+  a = computed(() => (this.r()?.technician ? { tech: this.r()!.technician, at: this.r()!.assignedAt } : null));
+  priorities = Object.entries(PRIORITY_LABEL);
+  error = signal('');
+
+  async setPriority(p: string): Promise<void> {
+    try { this.error.set(''); await this.admin.setPriority(this.r()!.uuid, p); } catch { this.error.set('Prioritas belum bisa diubah. Coba lagi.'); }
+  }
   open = computed(() => ['dikirim', 'ditugaskan'].includes(this.r()?.status ?? ''));
 }

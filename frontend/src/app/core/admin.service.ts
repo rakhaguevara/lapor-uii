@@ -1,121 +1,161 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { AuthService } from './auth.service';
 import { Report } from './report.model';
 
 /*
   SERVICE PETUGAS (Admin Unit dan Admin Universitas)
-  Data laporan dan gedung diambil dari backend. Backend BELUM punya: penugasan teknisi,
-  kode/fakultas gedung, tambah-ubah gedung, dan manajemen akun. Bagian itu disimpan di memori
-  (hilang saat refresh) sebagai prototipe sampai endpoint-nya ada. Lihat DESIGN.md bagian 11.
+  Memanggil endpoint kontrak API referensi (backend-sira, /api/documentation):
+    GET/POST/PUT/DELETE /locations           gedung
+    GET/POST/PUT /admin/users, POST /admin/users/toggle-status     akun staf
+    GET /reports, GET /reports/technicians, POST /reports/assign, POST /reports/priority
+  Bentuk jawaban TIDAK dijelaskan di dokumentasi, jadi pemetaan di bawah sengaja longgar
+  (menerima beberapa nama kolom). Periksa lagi bila backend asli sudah tersedia.
 */
 
 export type AdminStatus = 'dikirim' | 'ditugaskan' | 'diproses' | 'menunggu' | 'selesai' | 'gagal';
 // Urutan tampil di "Status penanganan" dan filter status
 export const ADMIN_STATUSES: AdminStatus[] = ['dikirim', 'ditugaskan', 'diproses', 'menunggu', 'selesai', 'gagal'];
 
-export type AdminReport = Omit<Report, 'status'> & { status: AdminStatus; priority: string; backendStatus: string };
-export interface Assignment { tech: string; note: string; at: string; by: string }
-export interface Technician { name: string; skills: string[]; active: number }
-export interface Building { id: string; name: string; code: string; scope: string; floors: number; active: boolean }
-export interface Account { id: string; name: string; email: string; role: string; scope: string; active: boolean }
+export type AdminReport = Omit<Report, 'status'> & {
+  status: AdminStatus; priority: string; technician: string; technicianUuid: string; assignedAt: string; buildingUuid: string;
+};
+export interface Technician { uuid: string; name: string; active: number; buildings: string[] }
+export interface Building { id: string; name: string; code: string; faculty: string; floors: number; active: boolean }
+export interface Account { id: string; name: string; email: string; role: string; buildingIds: string[]; buildings: string; active: boolean }
 
-export const ACCOUNT_ROLES = ['Pelapor', 'Teknisi', 'Admin Unit', 'Admin Universitas'];
-export const SCOPES = ['FTI UII', 'Universitas'];
-export const PRIORITY_LABEL: Record<string, string> = { TINGGI: 'Tinggi', NORMAL: 'Normal', RENDAH: 'Rendah' };
+export const PRIORITY_LABEL: Record<string, string> = { URGEN: 'Urgen', TINGGI: 'Tinggi', NORMAL: 'Normal', RENDAH: 'Rendah' };
+// Peran yang boleh dibuat lewat POST /admin/users (kode backend -> nama tampil)
+export const STAFF_ROLES: Record<string, string> = { TEKNISI: 'Teknisi', ADMIN_UNIT: 'Admin Unit', ADMIN_UNIV: 'Admin Universitas' };
 
-interface ApiReport {
-  uuid: string; ticket_no: string; title: string; floor: string; room_name: string; description: string;
-  photo_url: string; status: string; priority: string; created_at: string; like_count: number; is_liked: boolean;
-  building: { name: string }; category: { name: string };
+// Bentuk mentah dari backend (semua kolom dibuat opsional karena jawabannya tidak terdokumentasi)
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Raw = Record<string, any>;
+
+// Jawaban bisa berupa larik, atau objek berhalaman { data: [...] }
+export function rows(res: unknown): Raw[] {
+  const d = (res as Raw)?.['data'];
+  if (Array.isArray(d)) return d;
+  if (Array.isArray(d?.data)) return d.data;
+  return [];
 }
 
-function toAdminStatus(status: string, assigned: boolean): AdminStatus {
-  if (status === 'DIPROSES') return 'diproses';
-  if (status === 'MENUNGGU') return 'menunggu';
-  if (status === 'SELESAI') return 'selesai';
-  if (status === 'TIDAK_DAPAT_DIPERBAIKI') return 'gagal';
-  return assigned ? 'ditugaskan' : 'dikirim';
+function toAdminStatus(status: string, hasTech: boolean): AdminStatus {
+  switch (status) {
+    case 'DITUGASKAN': return 'ditugaskan';
+    case 'DIPROSES': return 'diproses';
+    case 'MENUNGGU': return 'menunggu';
+    case 'SELESAI': return 'selesai';
+    case 'TIDAK_DAPAT_DIPERBAIKI': return 'gagal';
+    default: return hasTech ? 'ditugaskan' : 'dikirim';
+  }
 }
 
-// Kode gedung dari huruf awal kata, contoh "KH Mas Mansur" -> "KMM"
-const codeOf = (name: string) =>
-  name.replace(/\(.*\)/, '').split(/\s+/).filter((w) => w && !/^(gedung|dr\.?)$/i.test(w)).map((w) => w[0].toUpperCase()).join('').slice(0, 4);
+// Satu laporan dari backend -> bentuk yang dipakai tampilan
+export function toAdminReport(r: Raw): AdminReport {
+  const t = r['technician'] ?? r['assigned_technician'] ?? r['assignment']?.technician ?? null;
+  const name: string = t?.full_name ?? t?.name ?? r['technician_name'] ?? '';
+  return {
+    uuid: r['uuid'], id: r['ticket_no'], title: r['title'] ?? '', building: r['building']?.name ?? '', buildingUuid: r['building']?.uuid ?? '',
+    floor: r['floor'] ?? '', room: r['room_name'] ?? '', category: r['category']?.name ?? '', description: r['description'] ?? '',
+    photoUrl: r['photo_url'] ?? '', status: toAdminStatus(r['status'], !!name), createdAt: r['created_at'],
+    likes: r['like_count'] ?? 0, liked: !!r['is_liked'], priority: r['priority'] ?? 'NORMAL',
+    technician: name, technicianUuid: t?.uuid ?? r['technician_uuid'] ?? '', assignedAt: r['assigned_at'] ?? r['assignment']?.assigned_at ?? '',
+  };
+}
 
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private http = inject(HttpClient);
-  private auth = inject(AuthService);
 
-  private raw = signal<ApiReport[]>([]);
-  readonly assignments = signal<Record<string, Assignment>>({});
+  private get = (url: string, params: Record<string, string> = {}) => firstValueFrom(this.http.get<unknown>(url, { params }));
 
-  // Teknisi contoh (belum ada di backend)
-  readonly technicians: Technician[] = [
-    { name: 'Budi Santoso', skills: ['AC & Pendingin', 'Proyektor', 'Lift'], active: 2 },
-    { name: 'Dimas Pratama', skills: ['Lampu', 'Sound System'], active: 3 },
-    { name: 'Rina Handayani', skills: ['Kursi & Meja', 'Lainnya'], active: 1 },
-  ];
-
+  readonly reports = signal<AdminReport[]>([]);
   readonly buildings = signal<Building[]>([]);
-  readonly accounts = signal<Account[]>([
-    { id: 'a1', name: 'Aisyah Rahmawati', email: 'aisyah@students.uii.ac.id', role: 'Pelapor', scope: 'FTI UII', active: true },
-    { id: 'a2', name: 'Budi Santoso', email: 'budi@uii.ac.id', role: 'Teknisi', scope: 'KH Mas Mansur', active: true },
-    { id: 'a3', name: 'Ahmad Fauzi', email: 'ahmad@uii.ac.id', role: 'Admin Unit', scope: 'FTI UII', active: true },
-  ]);
-
-  // Laporan dengan status petugas. Berubah otomatis saat ada penugasan baru.
-  readonly reports = computed<AdminReport[]>(() => {
-    const asg = this.assignments();
-    return this.raw().map((r) => ({
-      uuid: r.uuid, id: r.ticket_no, title: r.title, building: r.building?.name ?? '', floor: r.floor, room: r.room_name,
-      category: r.category?.name ?? '', description: r.description, photoUrl: r.photo_url,
-      status: toAdminStatus(r.status, !!asg[r.ticket_no]), createdAt: r.created_at, likes: r.like_count, liked: r.is_liked,
-      priority: r.priority, backendStatus: r.status,
-    }));
-  });
+  readonly accounts = signal<Account[]>([]);
 
   // Bulan yang dipilih di dashboard/statistik ("2026-11"). Kosong = bulan terbaru yang punya laporan.
   readonly monthPick = signal('');
-  readonly months = computed(() => [...new Set(this.raw().map((r) => r.created_at.slice(0, 7)))].sort().reverse());
+  readonly months = computed(() => [...new Set(this.reports().map((r) => r.createdAt.slice(0, 7)))].sort().reverse());
   readonly month = computed(() => this.monthPick() || this.months()[0] || '');
   readonly inMonth = computed(() => this.reports().filter((r) => r.createdAt.slice(0, 7) === this.month()));
 
-  async load(): Promise<void> {
-    const get = <T>(url: string) => firstValueFrom(this.http.get<{ data: T }>(url)).then((r) => r.data);
-    const [reports, locations] = await Promise.all([get<ApiReport[]>('/api/reports'), get<{ uuid: string; name: string }[]>('/api/locations')]);
-    this.raw.set(reports);
-    this.buildings.set(locations.map((l) => ({ id: l.uuid, name: l.name, code: codeOf(l.name), scope: 'FTI UII', floors: 4, active: true })));
+  // ---------- Muat data ----------
+  async loadReports(): Promise<void> {
+    this.reports.set(rows(await this.get('/api/reports', { per_page: '100' })).map(toAdminReport));
+  }
+
+  async loadBuildings(): Promise<void> {
+    this.buildings.set(rows(await this.get('/api/locations')).map((l) => ({
+      id: l['uuid'], name: l['name'], code: l['code'] ?? '', faculty: l['faculty'] ?? '', floors: l['floor_count'] ?? 0, active: l['is_active'] !== false,
+    })));
+  }
+
+  async loadAccounts(): Promise<void> {
+    this.accounts.set(rows(await this.get('/api/admin/users')).map((u) => {
+      const bs: Raw[] = u['buildings'] ?? u['building_scopes'] ?? u['scopes'] ?? [];
+      return {
+        id: u['uuid'], name: u['full_name'], email: u['email'], role: u['role'], active: u['is_active'] !== false,
+        buildingIds: bs.map((b) => b['uuid'] ?? b['building_uuid']), buildings: bs.map((b) => b['name'] ?? b['building']?.name ?? '').filter(Boolean).join(', '),
+      };
+    }));
+  }
+
+  // Data awal setelah login (tiap peran butuh hal berbeda)
+  async load(role: string): Promise<void> {
+    if (role === 'ADMIN_UNIT') await Promise.all([this.loadReports(), this.loadBuildings()]);
+    if (role === 'ADMIN_UNIV') await Promise.all([this.loadBuildings(), this.loadAccounts()]);
   }
 
   find(id: string): AdminReport | undefined {
     return this.reports().find((r) => r.id === id);
   }
 
-  // Teknisi yang cocok dengan kategori laporan (keahlian sama) boleh dipilih
-  skillMatch(t: Technician, category: string): boolean {
-    return t.skills.includes(category);
+  // ---------- Laporan ----------
+  async technicians(buildingUuid: string): Promise<Technician[]> {
+    const res = await this.get('/api/reports/technicians', buildingUuid ? { building_uuid: buildingUuid } : {});
+    return rows(res).map((t) => ({
+      uuid: t['uuid'], name: t['full_name'] ?? t['name'] ?? '', active: t['active_tasks_count'] ?? t['active_tasks'] ?? t['active_task_count'] ?? 0,
+      buildings: (t['buildings'] ?? []).map((b: Raw) => b['name']),
+    }));
   }
 
-  assign(id: string, tech: string, note: string): void {
-    this.assignments.update((a) => ({ ...a, [id]: { tech, note, at: new Date().toISOString(), by: this.auth.user().name } }));
+  async assign(reportUuid: string, technicianUuid: string): Promise<void> {
+    await firstValueFrom(this.http.post('/api/reports/assign', { technician_uuid: technicianUuid }, { params: { uuid: reportUuid } }));
+    await this.loadReports();
   }
 
-  // Pembuatan dan pengubahan gedung / akun (memori saja)
-  saveBuilding(b: Omit<Building, 'id' | 'active'> & { id?: string }): void {
-    if (b.id) this.buildings.update((l) => l.map((x) => (x.id === b.id ? { ...x, ...b } : x)));
-    else this.buildings.update((l) => [...l, { ...b, id: 'b' + Date.now(), active: true }]);
+  async setPriority(reportUuid: string, priority: string): Promise<void> {
+    await firstValueFrom(this.http.post('/api/reports/priority', { priority }, { params: { uuid: reportUuid } }));
+    await this.loadReports();
   }
-  setBuildingActive(id: string, active: boolean): void {
-    this.buildings.update((l) => l.map((x) => (x.id === id ? { ...x, active } : x)));
+
+  // ---------- Gedung ----------
+  async saveBuilding(b: { id?: string; name: string; code: string; faculty: string; floors: number }): Promise<void> {
+    const body = { name: b.name, code: b.code, faculty: b.faculty, floor_count: b.floors };
+    await firstValueFrom(b.id ? this.http.put('/api/locations', body, { params: { uuid: b.id } }) : this.http.post('/api/locations', { ...body, type: 'BUILDING' }));
+    await this.loadBuildings();
   }
-  saveAccount(a: Omit<Account, 'id' | 'active'> & { id?: string }): void {
-    if (a.id) this.accounts.update((l) => l.map((x) => (x.id === a.id ? { ...x, ...a } : x)));
-    else this.accounts.update((l) => [...l, { ...a, id: 'a' + Date.now(), active: true }]);
+
+  // Nonaktifkan = DELETE /locations; aktifkan lagi = PUT is_active
+  async setBuildingActive(b: Building, active: boolean): Promise<void> {
+    await firstValueFrom(active
+      ? this.http.put('/api/locations', { name: b.name, code: b.code, faculty: b.faculty, floor_count: b.floors, is_active: true }, { params: { uuid: b.id } })
+      : this.http.delete('/api/locations', { params: { uuid: b.id } }));
+    await this.loadBuildings();
   }
-  setAccountActive(id: string, active: boolean): void {
-    this.accounts.update((l) => l.map((x) => (x.id === id ? { ...x, active } : x)));
+
+  // ---------- Akun ----------
+  async saveAccount(a: { id?: string; name: string; email: string; role: string; password: string; buildingIds: string[] }): Promise<void> {
+    const body: Raw = { full_name: a.name, email: a.email, role: a.role, building_uuids: a.buildingIds };
+    if (a.password) body['password'] = a.password;
+    await firstValueFrom(a.id ? this.http.put('/api/admin/users', body, { params: { uuid: a.id } }) : this.http.post('/api/admin/users', body));
+    await this.loadAccounts();
+  }
+
+  async toggleAccount(id: string): Promise<void> {
+    await firstValueFrom(this.http.post('/api/admin/users/toggle-status', {}, { params: { uuid: id } }));
+    await this.loadAccounts();
   }
 }
 

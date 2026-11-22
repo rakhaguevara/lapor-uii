@@ -1,7 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { AdminService, SCOPES } from '../core/admin.service';
+import { AdminService } from '../core/admin.service';
 import { PageHead } from '../shared/page-head';
 
 // TAMBAH / UBAH GEDUNG (alamat /univ/gedung/baru atau /univ/gedung/:id)
@@ -26,9 +26,10 @@ import { PageHead } from '../shared/page-head';
           <input id="code" formControlName="code" placeholder="GLT" maxlength="6" [attr.aria-invalid]="bad('code')">
           @if (bad('code')) { <span class="error" role="alert">Kode gedung wajib diisi.</span> }
         </div>
-        <div class="field">
-          <label for="scope">Fakultas / unit *</label>
-          <select id="scope" formControlName="scope">@for (s of scopes; track s) { <option [value]="s">{{ s }}</option> }</select>
+        <div class="field" [class.invalid]="bad('faculty')">
+          <label for="faculty">Fakultas / unit *</label>
+          <input id="faculty" formControlName="faculty" placeholder="Fakultas Teknologi Industri" [attr.aria-invalid]="bad('faculty')">
+          @if (bad('faculty')) { <span class="error" role="alert">Fakultas / unit wajib diisi.</span> }
         </div>
         <div class="field" [class.invalid]="bad('floors')">
           <label for="floors">Jumlah lantai *</label>
@@ -36,9 +37,10 @@ import { PageHead } from '../shared/page-head';
           @if (bad('floors')) { <span class="error" role="alert">Isi jumlah lantai (1–30).</span> }
         </div>
       </div>
+      @if (error()) { <p class="error" role="alert" style="margin-top: 16px; color: var(--red); font-size: 12px">{{ error() }}</p> }
       <div class="foot">
         <a class="btn" routerLink="/univ/gedung">Batal</a>
-        <button class="btn btn-primary" type="submit">Simpan gedung</button>
+        <button class="btn btn-primary" type="submit" [disabled]="busy()">Simpan gedung</button>
       </div>
     </form>
   `,
@@ -47,29 +49,37 @@ export class BuildingForm {
   private admin = inject(AdminService);
   private router = inject(Router);
   id = inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '';
-  scopes = SCOPES;
   private sent = false;
+  busy = signal(false);
+  error = signal('');
 
   form = inject(FormBuilder).nonNullable.group({
-    name: ['', Validators.required], code: ['', Validators.required], scope: [SCOPES[0]],
+    name: ['', Validators.required], code: ['', Validators.required], faculty: ['', Validators.required],
     floors: [4, [Validators.required, Validators.min(1), Validators.max(30)]],
   });
 
   constructor() {
     const b = this.admin.buildings().find((x) => x.id === this.id);
-    if (b) this.form.patchValue(b);
+    if (b) this.form.patchValue({ name: b.name, code: b.code, faculty: b.faculty, floors: b.floors });
   }
 
-  bad(name: 'name' | 'code' | 'floors'): boolean {
+  bad(name: 'name' | 'code' | 'faculty' | 'floors'): boolean {
     const c = this.form.controls[name];
     return c.invalid && (c.touched || this.sent);
   }
 
-  save(): void {
+  async save(): Promise<void> {
     this.sent = true;
     if (this.form.invalid) return;
     const v = this.form.getRawValue();
-    this.admin.saveBuilding({ ...v, name: v.name.trim(), code: v.code.trim().toUpperCase(), id: this.id || undefined });
-    this.router.navigate(['/univ/gedung'], { queryParams: { tersimpan: v.name.trim() } });
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.admin.saveBuilding({ ...v, name: v.name.trim(), code: v.code.trim().toUpperCase(), faculty: v.faculty.trim(), id: this.id || undefined });
+      this.router.navigate(['/univ/gedung'], { queryParams: { tersimpan: v.name.trim() } });
+    } catch {
+      this.error.set('Gedung belum tersimpan. Periksa isian lalu coba lagi.');
+    }
+    this.busy.set(false);
   }
 }

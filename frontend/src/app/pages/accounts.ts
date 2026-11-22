@@ -2,7 +2,8 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
-import { AdminService } from '../core/admin.service';
+import { Account, AdminService, STAFF_ROLES } from '../core/admin.service';
+import { ROLE_LABEL } from '../core/auth.service';
 import { Icon } from '../shared/icon';
 import { PageHead } from '../shared/page-head';
 
@@ -31,18 +32,19 @@ import { PageHead } from '../shared/page-head';
         @for (a of list(); track a.id) {
           <div class="tr row">
             <span><span class="main">{{ a.name }}</span><span class="mute">{{ a.email }}</span></span>
-            <span>{{ a.role }}</span>
-            <span class="mute">{{ a.scope }}</span>
+            <span>{{ roleName(a.role) }}</span>
+            <span class="mute">{{ a.buildings || '–' }}</span>
             <span class="tag-on" [class.off]="!a.active">{{ a.active ? 'Aktif' : 'Nonaktif' }}</span>
             <span class="acts d-only">
               <a class="icon-btn" [routerLink]="['/univ/akun', a.id]" [attr.aria-label]="'Ubah ' + a.name"><app-icon name="edit" [size]="18" /></a>
-              <button class="icon-btn" type="button" [attr.aria-label]="(a.active ? 'Nonaktifkan ' : 'Aktifkan ') + a.name" (click)="toggle(a.id, a.name, a.active)"><app-icon name="trash" [size]="18" /></button>
+              <button class="icon-btn" type="button" [attr.aria-label]="(a.active ? 'Nonaktifkan ' : 'Aktifkan ') + a.name" (click)="toggle(a)"><app-icon name="trash" [size]="18" /></button>
             </span>
             <span class="acts m-only"><a class="btn" [routerLink]="['/univ/akun', a.id]">Lihat / ubah akun</a></span>
           </div>
         } @empty { <p class="empty">Tidak ada akun yang cocok.</p> }
       </section>
 
+      @if (error()) { <p class="alert" role="alert" style="padding: 12px 16px; border-radius: var(--r-ctl); background: var(--red-bg); color: var(--red)">{{ error() }}</p> }
       @if (saved()) { <p class="ok-note" role="status"><app-icon name="check" [size]="16" [stroke]="2.4" /> Akun {{ saved() }} berhasil disimpan.</p> }
     </div>
   `,
@@ -58,7 +60,12 @@ export class Accounts {
       (a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q)) && (!this.st() || a.active === (this.st() === 'aktif')));
   });
 
-  toggle(id: string, name: string, active: boolean): void {
-    if (confirm((active ? 'Nonaktifkan akun ' : 'Aktifkan akun ') + name + '?')) this.admin.setAccountActive(id, !active);
+  roleName = (r: string) => STAFF_ROLES[r] ?? ROLE_LABEL[r] ?? r;
+  error = signal('');
+
+  // Tombol tempat sampah = POST /admin/users/toggle-status
+  async toggle(a: Account): Promise<void> {
+    if (!confirm((a.active ? 'Nonaktifkan akun ' : 'Aktifkan akun ') + a.name + '?')) return;
+    try { this.error.set(''); await this.admin.toggleAccount(a.id); } catch { this.error.set('Perubahan belum tersimpan. Coba lagi.'); }
   }
 }

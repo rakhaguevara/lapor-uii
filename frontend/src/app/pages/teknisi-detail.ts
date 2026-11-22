@@ -3,7 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
-import { AdminService } from '../core/admin.service';
+import { AuthService } from '../core/auth.service';
 import { TechService } from '../core/tech.service';
 import { Icon } from '../shared/icon';
 import { PageHead } from '../shared/page-head';
@@ -44,7 +44,7 @@ import { StatusBadge } from '../shared/status-badge';
             @if (!owner()) {
               <p class="assignee">Belum ada teknisi</p>
               <p class="sub">Ambil tugas ini untuk mulai menangani.</p>
-              <button class="btn btn-primary act" type="button" (click)="take()">Ambil tugas</button>
+              <button class="btn btn-primary act" type="button" [disabled]="busy()" (click)="take()">Ambil tugas</button>
               <p class="hint">Tugas hanya dapat diambil oleh satu teknisi.</p>
             } @else if (!mine()) {
               <p class="assignee">{{ owner() }}</p>
@@ -53,6 +53,7 @@ import { StatusBadge } from '../shared/status-badge';
               <p class="assignee">{{ owner() }} · Anda</p>
               <p class="sub">Anda bertanggung jawab atas tugas ini.</p>
               <button class="btn btn-primary act" type="button" [disabled]="busy()" (click)="start()">Mulai penanganan</button>
+              <button class="btn act" style="margin-top: 12px" type="button" (click)="giveBack()">Kembalikan tugas</button>
               @if (taken()) { <p class="hint ok"><app-icon name="check" [size]="14" [stroke]="2.4" /> Tugas berhasil Anda ambil.</p> }
             } @else if (r.status === 'diproses' || r.status === 'menunggu') {
               <p class="assignee">Sedang Anda tangani</p>
@@ -92,8 +93,8 @@ import { StatusBadge } from '../shared/status-badge';
   `,
 })
 export class TeknisiDetail {
-  private admin = inject(AdminService);
   private tech = inject(TechService);
+  private auth = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private id = toSignal(this.route.paramMap.pipe(map((p) => p.get('id') ?? '')), { initialValue: '' });
@@ -103,10 +104,10 @@ export class TeknisiDetail {
   busy = signal(false);
   error = signal('');
 
-  r = computed(() => this.admin.find(this.id()));
-  a = computed(() => this.admin.assignments()[this.id()]);
-  owner = computed(() => this.a()?.tech ?? '');
-  mine = computed(() => this.owner() === this.tech.me());
+  r = computed(() => this.tech.find(this.id()));
+  a = computed(() => (this.r()?.technician ? { at: this.r()!.assignedAt } : null));
+  owner = computed(() => this.r()?.technician ?? '');
+  mine = computed(() => !!this.owner() && (this.owner() === this.tech.me() || this.r()?.technicianUuid === this.auth.uuid()));
   proof = computed(() => this.tech.proofs()[this.id()] ?? '');
   title = computed(() => {
     const s = this.r()?.status;
@@ -115,9 +116,23 @@ export class TeknisiDetail {
     return s === 'dikirim' ? 'Detail tugas tersedia' : 'Detail tugas';
   });
 
-  take(): void {
-    this.tech.take(this.id());
-    this.router.navigate(['/teknisi/tugas', this.id()], { queryParams: { diambil: 1 } });
+  async take(): Promise<void> {
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      await this.tech.take(this.r()!.uuid);
+      this.router.navigate(['/teknisi/tugas', this.id()], { queryParams: { diambil: 1 } });
+    } catch {
+      this.error.set('Tugas belum bisa diambil. Mungkin sudah diambil teknisi lain.');
+    }
+    this.busy.set(false);
+  }
+
+  // Kembalikan tugas dengan alasan (POST /reports/respond-assignment, action REJECT)
+  async giveBack(): Promise<void> {
+    const reason = prompt('Alasan mengembalikan tugas:')?.trim();
+    if (!reason) return;
+    try { this.error.set(''); await this.tech.reject(this.r()!.uuid, reason); this.router.navigate(['/teknisi/tugas']); } catch { this.error.set('Tugas belum bisa dikembalikan. Coba lagi.'); }
   }
   start(): Promise<void> { return this.run('DIPROSES'); }
   finish(): Promise<void> { return this.run('SELESAI'); }
@@ -126,7 +141,7 @@ export class TeknisiDetail {
     this.busy.set(true);
     this.error.set('');
     try {
-      await this.tech.setStatus(this.id(), status, this.file());
+      await this.tech.setStatus(this.r()!.uuid, this.id(), status, this.file());
       if (status === 'SELESAI') this.router.navigate(['/teknisi/tugas', this.id()]);
     } catch {
       this.error.set('Status belum bisa diubah. Coba lagi.');

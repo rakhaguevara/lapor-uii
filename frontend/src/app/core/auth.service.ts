@@ -3,7 +3,7 @@ import { Injectable, computed, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 // Bentuk data pengguna dari backend
-interface ApiUser { full_name: string; role: string; reporter_type?: string }
+interface ApiUser { uuid?: string; full_name: string; role: string; reporter_type?: string }
 
 // Peran dari backend -> nama tampil dan halaman beranda masing-masing
 export const ROLE_LABEL: Record<string, string> = {
@@ -27,6 +27,7 @@ export class AuthService {
   readonly token = this._token.asReadonly();
   readonly loggedIn = computed(() => this._token() !== '');
   // Kode peran (PELAPOR, ADMIN_UNIT, ADMIN_UNIV, ...) dan beranda miliknya
+  readonly uuid = computed(() => this._user()?.uuid ?? '');
   readonly roleCode = computed(() => this._user()?.role ?? '');
   readonly home = computed(() => ROLE_HOME[this.roleCode()] ?? '/beranda');
   // Nama dan peran untuk ditampilkan di header

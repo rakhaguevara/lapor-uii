@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
-import { AdminService } from '../core/admin.service';
+import { AdminService, Building } from '../core/admin.service';
 import { Icon } from '../shared/icon';
 import { PageHead } from '../shared/page-head';
 
@@ -33,17 +33,18 @@ import { PageHead } from '../shared/page-head';
           <div class="tr row">
             <span class="main">{{ b.name }}</span>
             <span><span class="m-only mute">Kode </span>{{ b.code }}</span>
-            <span class="mute">{{ b.scope }} · {{ b.floors }} lantai</span>
+            <span class="mute">{{ b.faculty }}{{ b.floors ? ' · ' + b.floors + ' lantai' : '' }}</span>
             <span class="tag-on" [class.off]="!b.active">{{ b.active ? 'Aktif' : 'Nonaktif' }}</span>
             <span class="acts d-only">
               <a class="icon-btn" [routerLink]="['/univ/gedung', b.id]" [attr.aria-label]="'Ubah ' + b.name"><app-icon name="edit" [size]="18" /></a>
-              <button class="icon-btn" type="button" [attr.aria-label]="(b.active ? 'Nonaktifkan ' : 'Aktifkan ') + b.name" (click)="toggle(b.id, b.name, b.active)"><app-icon name="trash" [size]="18" /></button>
+              <button class="icon-btn" type="button" [attr.aria-label]="(b.active ? 'Nonaktifkan ' : 'Aktifkan ') + b.name" (click)="toggle(b)"><app-icon name="trash" [size]="18" /></button>
             </span>
             <span class="acts m-only"><a class="btn" [routerLink]="['/univ/gedung', b.id]">Lihat / ubah gedung</a></span>
           </div>
         } @empty { <p class="empty">Tidak ada gedung yang cocok.</p> }
       </section>
 
+      @if (error()) { <p class="alert" role="alert" style="padding: 12px 16px; border-radius: var(--r-ctl); background: var(--red-bg); color: var(--red)">{{ error() }}</p> }
       @if (saved()) { <p class="ok-note" role="status"><app-icon name="check" [size]="16" [stroke]="2.4" /> {{ saved() }} berhasil disimpan.</p> }
     </div>
   `,
@@ -60,7 +61,10 @@ export class Buildings {
   });
 
   // Tombol tempat sampah = nonaktifkan (data tidak dihapus, laporan lama tetap utuh)
-  toggle(id: string, name: string, active: boolean): void {
-    if (confirm((active ? 'Nonaktifkan ' : 'Aktifkan ') + name + '?')) this.admin.setBuildingActive(id, !active);
+  error = signal('');
+
+  async toggle(b: Building): Promise<void> {
+    if (!confirm((b.active ? 'Nonaktifkan ' : 'Aktifkan ') + b.name + '?')) return;
+    try { this.error.set(''); await this.admin.setBuildingActive(b, !b.active); } catch { this.error.set('Perubahan belum tersimpan. Coba lagi.'); }
   }
 }
