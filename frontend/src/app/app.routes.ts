@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard } from './core/auth.guard';
+import { authGuard, guestGuard, roleGuard } from './core/auth.guard';
 import { Shell } from './layout/shell';
 
 /*
@@ -27,6 +27,35 @@ export const routes: Routes = [
       { path: 'laporan-saya', data: { mode: 'mine' }, loadComponent: () => import('./pages/reports-page').then((m) => m.ReportsPage) },
       { path: 'laporan-publik', data: { mode: 'public' }, loadComponent: () => import('./pages/reports-page').then((m) => m.ReportsPage) },
       { path: '**', redirectTo: 'beranda' },
+    ],
+  },
+  {
+    // Portal petugas. roleGuard membatasi per peran (Backend tetap pemeriksa sebenarnya).
+    path: 'unit',
+    component: Shell,
+    canActivate: [authGuard, roleGuard('ADMIN_UNIT')],
+    children: [
+      { path: '', pathMatch: 'full', loadComponent: () => import('./pages/unit-home').then((m) => m.UnitHome) },
+      { path: 'laporan', loadComponent: () => import('./pages/unit-reports').then((m) => m.UnitReports) },
+      { path: 'laporan/:id/tugaskan', loadComponent: () => import('./pages/unit-assign').then((m) => m.UnitAssign) },
+      { path: 'laporan/:id', loadComponent: () => import('./pages/unit-detail').then((m) => m.UnitDetail) },
+      { path: 'statistik', loadComponent: () => import('./pages/unit-stats').then((m) => m.UnitStats) },
+      { path: '**', redirectTo: '' },
+    ],
+  },
+  {
+    path: 'univ',
+    component: Shell,
+    canActivate: [authGuard, roleGuard('ADMIN_UNIV')],
+    children: [
+      { path: '', pathMatch: 'full', loadComponent: () => import('./pages/univ-home').then((m) => m.UnivHome) },
+      { path: 'gedung', loadComponent: () => import('./pages/buildings').then((m) => m.Buildings) },
+      { path: 'gedung/baru', loadComponent: () => import('./pages/building-form').then((m) => m.BuildingForm) },
+      { path: 'gedung/:id', loadComponent: () => import('./pages/building-form').then((m) => m.BuildingForm) },
+      { path: 'akun', loadComponent: () => import('./pages/accounts').then((m) => m.Accounts) },
+      { path: 'akun/baru', loadComponent: () => import('./pages/account-form').then((m) => m.AccountForm) },
+      { path: 'akun/:id', loadComponent: () => import('./pages/account-form').then((m) => m.AccountForm) },
+      { path: '**', redirectTo: '' },
     ],
   },
   { path: '**', redirectTo: '' },

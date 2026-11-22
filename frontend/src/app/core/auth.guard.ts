@@ -14,3 +14,10 @@ export const guestGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   return auth.loggedIn() ? inject(Router).createUrlTree(['/portal']) : true;
 };
+
+// Batasi halaman untuk peran tertentu. Peran lain dibawa ke beranda miliknya.
+// (Kenyamanan tampilan saja; Backend tetap yang memeriksa hak akses.)
+export const roleGuard = (...roles: string[]): CanActivateFn => () => {
+  const auth = inject(AuthService);
+  return roles.includes(auth.roleCode()) ? true : inject(Router).createUrlTree([auth.home()]);
+};

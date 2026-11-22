@@ -15,6 +15,14 @@ export const STATUS_LABEL: Record<StatusCode, string> = {
   selesai: 'Selesai',
 };
 
+// Label gabungan untuk lencana: 3 status pelapor + status tambahan yang hanya dipakai petugas
+export const ALL_STATUS_LABEL: Record<string, string> = {
+  ...STATUS_LABEL,
+  ditugaskan: 'Ditugaskan',
+  menunggu: 'Menunggu',
+  gagal: 'Tidak dapat diperbaiki',
+};
+
 // Daftar status untuk dropdown filter
 export const STATUS_OPTIONS = Object.keys(STATUS_LABEL) as StatusCode[];
 
@@ -88,9 +96,7 @@ export const SAMPLE_REPORT = {
   title: 'AC tidak dingin',
   floor: 'Lantai 3',
   room: 'Ruang 3.12',
-  description: 'AC menyala tetapi tidak mengeluarkan udara dingin sejak pagi.
-Kegiatan perkuliahan di ruang 3.12 terasa tidak nyaman.',
+  description: 'AC menyala tetapi tidak mengeluarkan udara dingin sejak pagi. Kegiatan perkuliahan di ruang 3.12 terasa tidak nyaman.',
   photoUrl: '/samples/ac-ruang-312.jpg',
   photoName: 'ac-ruang-312.jpg',
-  photoSize: '1,8 MB',
 };

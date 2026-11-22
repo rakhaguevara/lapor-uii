@@ -17,6 +17,9 @@ const PATHS = {
   check: 'm4 12.5 5 5L20 6.5',
   right: 'M5 12h14M13 6l6 6-6 6',
   left: 'M19 12H5M11 6l-6 6 6 6',
+  chart: 'M4 20V10M10 20V4M16 20v-8M22 20H2',
+  building: 'M4 21V4h10v17M14 9h6v12M8 8h2M8 12h2M8 16h2M3 21h18',
+  users: 'M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM22 20v-2a4 4 0 0 0-3-3.9M16 4.1a4 4 0 0 1 0 7.8',
 } as const;
 
 export type IconName = keyof typeof PATHS;
