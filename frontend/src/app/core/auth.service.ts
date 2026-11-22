@@ -10,7 +10,7 @@ export const ROLE_LABEL: Record<string, string> = {
   PELAPOR: 'Pelapor', TEKNISI: 'Teknisi', ADMIN_UNIT: 'Admin Unit', ADMIN_UNIV: 'Admin Universitas',
 };
 export const ROLE_HOME: Record<string, string> = {
-  PELAPOR: '/beranda', TEKNISI: '/beranda', ADMIN_UNIT: '/unit', ADMIN_UNIV: '/univ',
+  PELAPOR: '/beranda', TEKNISI: '/teknisi', ADMIN_UNIT: '/unit', ADMIN_UNIV: '/univ',
 };
 
 /*

@@ -27,6 +27,7 @@ export class Portal {
   // Teks kartu akses per peran
   access = () => ({
     PELAPOR: { title: 'Pelapor', text: 'Buat laporan dan pantau perkembangannya.' },
+    TEKNISI: { title: 'Teknisi', text: 'Tangani tugas di gedung tanggung jawab Anda.' },
     ADMIN_UNIT: { title: 'Admin Unit', text: 'Prioritaskan laporan dan tugaskan teknisi.' },
     ADMIN_UNIV: { title: 'Admin Universitas', text: 'Kelola data gedung dan akun pengguna.' },
   } as Record<string, { title: string; text: string }>)[this.auth.roleCode()] ?? { title: this.user.role, text: '' };

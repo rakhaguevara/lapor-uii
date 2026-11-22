@@ -19,6 +19,15 @@ const ROLES: Record<string, RoleView> = {
       { path: '/laporan-publik', label: 'Laporan publik', short: 'Publik', icon: 'ring' },
     ],
   },
+  TEKNISI: {
+    title: 'TEKNISI', access: 'Tugas sesuai cakupan gedung.', showType: false,
+    menu: [
+      { path: '/teknisi', label: 'Beranda', short: 'Beranda', icon: 'grid' },
+      { path: '/teknisi/tugas', label: 'Semua tugas', short: 'Semua tugas', icon: 'list' },
+      { path: '/teknisi/tersedia', label: 'Tersedia', short: 'Tersedia', icon: 'plus' },
+      { path: '/teknisi/saya', label: 'Tugas Saya', short: 'Tugas Saya', icon: 'check' },
+    ],
+  },
   ADMIN_UNIT: {
     title: 'ADMIN UNIT', access: 'Laporan fasilitas UII. Kelola dan tugaskan teknisi.', showType: false,
     menu: [
@@ -139,7 +148,7 @@ export class Shell {
     const u = this.url();
     if (u.startsWith('/laporan/baru') || u.endsWith('/terkirim')) return '/laporan/baru';
     if (u.startsWith('/laporan/')) return '/laporan-saya';
-    const hit = this.role().menu.filter((m) => (m.path === '/unit' || m.path === '/univ' ? u === m.path : u.startsWith(m.path)));
+    const hit = this.role().menu.filter((m) => (['/unit', '/univ', '/teknisi'].includes(m.path) ? u === m.path : u.startsWith(m.path)));
     return hit.sort((a, b) => b.path.length - a.path.length)[0]?.path ?? '';
   };
 }

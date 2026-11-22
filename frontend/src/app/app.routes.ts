@@ -30,6 +30,19 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'teknisi',
+    component: Shell,
+    canActivate: [authGuard, roleGuard('TEKNISI')],
+    children: [
+      { path: '', pathMatch: 'full', loadComponent: () => import('./pages/teknisi-home').then((m) => m.TeknisiHome) },
+      { path: 'tugas', data: { mode: 'all' }, loadComponent: () => import('./pages/teknisi-tasks').then((m) => m.TeknisiTasks) },
+      { path: 'tersedia', data: { mode: 'available' }, loadComponent: () => import('./pages/teknisi-tasks').then((m) => m.TeknisiTasks) },
+      { path: 'saya', data: { mode: 'mine' }, loadComponent: () => import('./pages/teknisi-tasks').then((m) => m.TeknisiTasks) },
+      { path: 'tugas/:id', loadComponent: () => import('./pages/teknisi-detail').then((m) => m.TeknisiDetail) },
+      { path: '**', redirectTo: '' },
+    ],
+  },
+  {
     // Portal petugas. roleGuard membatasi per peran (Backend tetap pemeriksa sebenarnya).
     path: 'unit',
     component: Shell,

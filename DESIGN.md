@@ -217,3 +217,9 @@ Layar "berhasil disimpan" (gedung, akun) = daftar dengan kotak hijau (`?tersimpa
 **Data**: laporan dan gedung dari backend (`GET /api/reports`, `/api/locations`). **Belum ada di backend, disimpan di memori (hilang saat refresh)**: penugasan teknisi dan status "Ditugaskan", daftar teknisi, kode/cakupan/lantai gedung, tambah-ubah-nonaktifkan gedung, seluruh akun, dan waktu respons ("Kinerja layanan" tampil "–"). Semuanya di `core/admin.service.ts`. Statistik dihitung dari laporan bulan terpilih.
 
 Penyimpangan: tombol tempat sampah = nonaktifkan (bukan hapus); nama pelapor tidak tampil di detail (API tidak mengirimnya); filter laporan tidak tampil di mobile (sesuai desain); kartu laporan mobile memakai tata letak kartu pelapor (status di bawah judul, bukan di pojok kanan atas); pilihan prioritas mengikuti nilai backend (Tinggi/Normal/Rendah).
+
+## 12. Portal Teknisi
+
+Sumber: `design-refrence/teknisi/`. Menu: Beranda `/teknisi`, Semua tugas `/teknisi/tugas`, Tersedia `/teknisi/tersedia`, Tugas Saya `/teknisi/saya`; detail `/teknisi/tugas/:id`. Daftar (`shared/task-list.ts`) dipakai di Beranda dan halaman daftar; tab Semua / Tersedia / Tugas Saya mengganti isi tanpa pindah halaman. Logika di `core/tech.service.ts`.
+
+Alur detail: Ambil tugas → (judul "Tugas berhasil diambil") Mulai penanganan → Selesaikan tugas (foto bukti opsional) → "Tugas selesai". "Mulai" dan "Selesai" memakai `POST /api/reports/status` (nyata). **"Ambil tugas" disimpan di memori** (belum ada endpoint). Cakupan gedung teknisi dicari dari data akun contoh; bila tidak ketemu, semua gedung tampil. Foto bukti hanya ditampilkan di browser (backend belum menyimpannya). Jumlah "Perlu konfirmasi" = tugas milik teknisi yang berstatus Ditugaskan.
