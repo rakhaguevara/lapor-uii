@@ -1,3 +1,31 @@
+/* Tailwind v4 tanpa preflight (reset bawaan dilewati supaya gaya yang sudah ada tidak berubah).
+   Hanya kelas yang dipakai di template yang masuk ke CSS akhir. Nilai mengikuti token :root di bawah. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme inline {
+  --color-*: initial;
+  --color-yellow: var(--yellow);
+  --color-blue-900: var(--blue-900);
+  --color-blue-hero: var(--blue-hero);
+  --color-blue-600: var(--blue-600);
+  --color-blue-50: var(--blue-50);
+  --color-white: var(--white);
+  --color-bg: var(--bg);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-red: var(--red);
+  --color-red-bg: var(--red-bg);
+  --color-amber: var(--amber);
+  --color-amber-bg: var(--amber-bg);
+  --color-green: var(--green);
+  --color-green-bg: var(--green-bg);
+  --font-sans: 'Poppins', system-ui, sans-serif;
+  --radius-card: var(--r-card);
+  --radius-ctl: var(--r-ctl);
+}
+
 /*
   STYLE GLOBAL (token desain + komponen dasar)
   Sumber: design-refrence/Guideline.png dan DESIGN.md.
