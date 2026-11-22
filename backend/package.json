@@ -2,8 +2,11 @@
   "name": "im-care-backend",
   "version": "1.0.0",
   "private": true,
-  "scripts": { "start": "node server.js" },
+  "scripts": {
+    "start": "node --env-file=.env server.js"
+  },
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "express": "^4.19.2",

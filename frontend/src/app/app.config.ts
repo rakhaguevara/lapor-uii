@@ -4,7 +4,7 @@ import { ApplicationConfig, LOCALE_ID, provideBrowserGlobalErrorListeners } from
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
-import { authInterceptor } from './core/auth.interceptor';
+import { authInterceptor } from './core/auth/auth.interceptor';
 
 // Daftarkan bahasa Indonesia agar tanggal tampil "18 Nov 2026", bukan versi Inggris
 registerLocaleData(localeId);

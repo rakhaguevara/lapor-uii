@@ -241,7 +241,7 @@ Tombol kirim aktif setelah semua kolom wajib terisi. Jika kolom kurang saat dite
 
 ## 10. Antarmuka dan Identitas
 
-- **Warna (usulan, bersumber dari makna logo UII)**: biru dominan untuk aksi utama dan header, kuning emas sebagai aksen, putih untuk latar. Kode warna resmi belum diperoleh, perlu dari brand guide UII.
+- **Warna dan font**: mengikuti `design-refrence/Guideline.png` (header kuning `#F6D106`, biru `#0867D8` / `#093697`, font Poppins). Rinciannya, termasuk ukuran per layar desktop dan mobile, ada di [DESIGN.md](DESIGN.md). Kode warna dari brand guide resmi UII belum diperoleh; bila berbeda, ubah di blok `:root` pada `frontend/src/styles.css`.
 - **Responsif**: mobile first. Pelapor kebanyakan memakai HP, sedangkan dashboard dan admin dipakai di komputer.
 - **Nama dan slogan**: I'M Care UII hanya usulan. Slogan UII "I'M UII" adalah akronim Islami, Mondial, Unggul, Intelektual, Indonesiawi. Penggunaannya perlu dikonfirmasi ke pihak UII.
 - **Bahasa antarmuka**: Indonesia, ringkas dan jelas untuk pengguna awam.

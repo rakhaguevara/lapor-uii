@@ -1,42 +1,48 @@
-# Backend (belum dibuat)
+# Backend IM-Care
 
-Folder ini sengaja kosong dari kode. Backend dikerjakan tim Backend BSI UII.
-Frontend (folder `frontend/`) hanya menunggu kontrak API.
+Express + Supabase (Postgres untuk data, Storage untuk foto). Mengikuti kontrak API referensi
+<https://backend-sira-production.up.railway.app/api/documentation>:
+jawaban `{ status, msg, data }`, id lewat query (`?uuid=...`), login pakai Bearer token.
 
-## Cara frontend dan backend bertemu
+## Setup Supabase (sekali saja)
+
+1. Buat project di <https://supabase.com>.
+2. Buka **SQL Editor**, paste isi `schema.sql`, klik **Run**
+   (membuat tabel, bucket foto `reports`, gedung, kategori, 2 akun contoh, 3 laporan contoh).
+3. Salin `.env.example` menjadi `.env`, isi `SUPABASE_URL` dan `SUPABASE_SERVICE_KEY`
+   (Project Settings > API > `service_role`). Kunci ini rahasia, hanya untuk server.
+
+## Menjalankan
 
 ```
-frontend (Angular)  ──  HTTP + JSON  ──►  backend (API)  ──►  database
+cd backend
+npm install
+npm start          # http://localhost:3000
 ```
 
-Selama API belum ada, frontend memakai data mock di
-`frontend/src/app/core/report.service.ts` dan `auth.service.ts`.
-Saat API siap, hanya isi dua service itu yang diganti dengan `HttpClient`.
+Di terminal lain: `cd frontend && npm start`. Proxy di `frontend/proxy.conf.json`
+meneruskan `/api` ke port 3000, jadi tidak ada masalah CORS.
 
-## Yang dibutuhkan frontend dari backend
+## Akun contoh
 
-Ini **usulan** dari PTD bagian 7.2, bukan kontrak final. Bentuk resminya
-menunggu spesifikasi OpenAPI dari Backend.
-
-| Domain | Kebutuhan | Dipakai di halaman |
+| Email | Password | Peran |
 |---|---|---|
-| Auth | Masuk, keluar, profil dan peran | Login, header |
-| Gedung | Daftar gedung aktif (dengan pencarian) | Form Buat laporan, filter |
-| Laporan | Buat (dengan unggah foto), daftar milik saya, daftar publik, detail | Beranda, Buat laporan, Laporan Saya, Laporan publik, Detail |
-| Like | Beri dan batalkan | Laporan publik |
+| aisyah@uii.ac.id | password123 | PELAPOR |
+| admin@uii.ac.id | admin123 | ADMIN_UNIT |
 
-Domain lain (tugas teknisi, ubah status, notifikasi, dashboard, ekspor, kelola akun)
-ada di PTD bagian 7.2 dan baru relevan saat portal Teknisi, Kaur, dan Admin dibangun.
+## Endpoint
 
-## Hal yang harus dijaga backend (bukan frontend)
+| Method | Path | Keterangan |
+|---|---|---|
+| POST | /api/auth/register, /login, /logout, /change-password | |
+| GET | /api/auth/me | |
+| GET | /api/locations, /locations/detail | gedung |
+| GET | /api/damage-categories | kategori |
+| POST | /api/reports | multipart, foto JPG/PNG maks 5 MB |
+| GET | /api/reports | khusus petugas |
+| GET | /api/reports/my-reports, /public, /detail | detail pakai `?ticket_no=` atau `?uuid=` |
+| POST | /api/reports/like?uuid= | like / batal like |
+| POST | /api/reports/status?uuid= | khusus petugas |
 
-- Hak akses per peran dan lingkup gedung. Frontend hanya menyembunyikan tampilan.
-- Validasi foto (tipe dan ukuran maksimal 5 MB) dan semua isian form.
-- Nama pelapor disamarkan pada daftar publik.
-- Sesi lewat cookie HttpOnly, serta CORS untuk alamat frontend.
-- Nomor tiket (contoh `LP-0146`) dan status awal `Dikirim`.
-
-## Keputusan terbuka yang memengaruhi API
-
-Lihat PRD bagian 13 dan PTD bagian 12: model status (3 atau 9), autentikasi
-(email dan password atau SSO UIIGateway), format spesifikasi API, dan jadwal rilisnya.
+Belum dibuat dari referensi: admin users, facilities, notifications, dashboard, export,
+assign/priority/confirm/reopen, dan pagination (`per_page`).
