@@ -3,6 +3,7 @@ import { Component, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { AdminReport } from '../../../../core/admin/admin.service';
 import { Icon } from '../../../../shared/icon/icon';
+import { Skeleton } from '../../../../shared/skeleton/skeleton';
 import { StatusBadge } from '../../../../shared/status-badge/status-badge';
 
 /*
@@ -13,15 +14,18 @@ import { StatusBadge } from '../../../../shared/status-badge/status-badge';
 */
 @Component({
   selector: 'app-task-table',
-  imports: [RouterLink, DatePipe, StatusBadge, Icon],
+  imports: [RouterLink, DatePipe, StatusBadge, Icon, Skeleton],
   template: `
-    @if (tasks().length === 0) {
+    @if (!loading() && tasks().length === 0) {
       <p class="empty">{{ emptyText() }}</p>
     } @else {
       <div class="head d-only">
         <span>Tiket / kerusakan</span><span>Lokasi</span><span>Tanggal</span>
         <span class="status-h">Status</span>
       </div>
+      @if (loading()) {
+        <app-skeleton variant="rows" [count]="4" />
+      } @else {
       @for (t of tasks(); track t.id) {
         <article class="row">
           <a class="name" [routerLink]="['/teknisi/tugas', t.id]">
@@ -36,6 +40,7 @@ import { StatusBadge } from '../../../../shared/status-badge/status-badge';
           </span>
           <a class="more m-only" [routerLink]="['/teknisi/tugas', t.id]">Lihat detail <app-icon name="right" [size]="14" [stroke]="2.2" /></a>
         </article>
+      }
       }
     }
   `,
@@ -67,6 +72,7 @@ import { StatusBadge } from '../../../../shared/status-badge/status-badge';
   `,
 })
 export class TaskTable {
+  loading = input(false);   // true = data masih dimuat -> tampilkan kerangka
   tasks = input.required<AdminReport[]>();
   emptyText = input('Tidak ada tugas.');
 }

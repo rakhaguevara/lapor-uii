@@ -5,12 +5,13 @@ import { map } from 'rxjs';
 import { AdminService, Building } from '../../../core/admin/admin.service';
 import { Icon } from '../../../shared/icon/icon';
 import { PageHead } from '../../../shared/page-head/page-head';
+import { Skeleton } from '../../../shared/skeleton/skeleton';
 
 // KELOLA GEDUNG (Admin Universitas): cari, filter status, tambah, ubah, nonaktifkan.
 // Setelah simpan, ?tersimpan=<nama> menampilkan kotak hijau di bawah daftar.
 @Component({
   selector: 'app-buildings',
-  imports: [RouterLink, Icon, PageHead],
+  imports: [RouterLink, Icon, PageHead, Skeleton],
   template: `
     <app-page-head title="Kelola gedung" subtitle="Kelola data gedung dan akses pengguna universitas."
       [crumbs]="[{ label: 'Portal Admin Universitas', link: '/univ' }, { label: 'Kelola gedung' }]">
@@ -29,6 +30,9 @@ import { PageHead } from '../../../shared/page-head/page-head';
         <p class="sub m-only" style="margin-bottom: 12px">{{ list().length }} ditampilkan</p>
 
         <div class="tr th d-only"><span>Nama gedung</span><span>Kode</span><span>Cakupan</span><span>Status</span><span></span></div>
+        @if (!admin.buildingsLoaded()) {
+          <app-skeleton variant="rows" [count]="5" [cells]="5" cols="2.2fr 1fr 1.4fr 1fr 96px" />
+        } @else {
         @for (b of list(); track b.id) {
           <div class="tr row">
             <span class="main">{{ b.name }}</span>
@@ -42,6 +46,7 @@ import { PageHead } from '../../../shared/page-head/page-head';
             <span class="acts m-only"><a class="btn" [routerLink]="['/univ/gedung', b.id]">Lihat / ubah gedung</a></span>
           </div>
         } @empty { <p class="empty">Tidak ada gedung yang cocok.</p> }
+        }
       </section>
 
       @if (error()) { <p class="alert" role="alert" style="padding: 12px 16px; border-radius: var(--r-ctl); background: var(--red-bg); color: var(--red)">{{ error() }}</p> }
@@ -50,7 +55,7 @@ import { PageHead } from '../../../shared/page-head/page-head';
   `,
 })
 export class Buildings {
-  private admin = inject(AdminService);
+  admin = inject(AdminService);
   saved = toSignal(inject(ActivatedRoute).queryParamMap.pipe(map((p) => p.get('tersimpan') ?? '')), { initialValue: '' });
   q = signal(''); st = signal('aktif');
 

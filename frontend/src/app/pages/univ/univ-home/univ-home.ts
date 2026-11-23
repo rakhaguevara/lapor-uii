@@ -3,22 +3,27 @@ import { RouterLink } from '@angular/router';
 import { AdminService } from '../../../core/admin/admin.service';
 import { Icon } from '../../../shared/icon/icon';
 import { PageHead } from '../../../shared/page-head/page-head';
+import { Skeleton } from '../../../shared/skeleton/skeleton';
 
 // BERANDA ADMIN UNIVERSITAS: 4 angka ringkas dan dua pintu masuk (Gedung, Akun pengguna).
 @Component({
   selector: 'app-univ-home',
-  imports: [RouterLink, Icon, PageHead],
+  imports: [RouterLink, Icon, PageHead, Skeleton],
   template: `
     <app-page-head title="Dashboard Admin Universitas" subtitle="Kelola data gedung dan akses pengguna universitas."
       [crumbs]="[{ label: 'Portal Admin Universitas', link: '/portal' }, { label: 'Dashboard Admin Universitas' }]" />
 
     <div class="stack">
-      <section class="grid-4" aria-label="Ringkasan">
-        <div class="card stat"><span>Gedung aktif</span><strong>{{ n().gedung }}</strong></div>
-        <div class="card stat"><span>Akun staf aktif</span><strong>{{ n().akun }}</strong></div>
-        <div class="card stat"><span>Teknisi</span><strong>{{ n().teknisi }}</strong></div>
-        <div class="card stat"><span>Role akses</span><strong>{{ n().role }}</strong></div>
-      </section>
+      @if (!admin.buildingsLoaded() || !admin.accountsLoaded()) {
+        <app-skeleton variant="stats" />
+      } @else {
+        <section class="grid-4" aria-label="Ringkasan">
+          <div class="card stat"><span>Gedung aktif</span><strong>{{ n().gedung }}</strong></div>
+          <div class="card stat"><span>Akun staf aktif</span><strong>{{ n().akun }}</strong></div>
+          <div class="card stat"><span>Teknisi</span><strong>{{ n().teknisi }}</strong></div>
+          <div class="card stat"><span>Role akses</span><strong>{{ n().role }}</strong></div>
+        </section>
+      }
 
       <div class="grid-2">
         <section class="card panel go">
@@ -43,7 +48,7 @@ import { PageHead } from '../../../shared/page-head/page-head';
   `,
 })
 export class UnivHome {
-  private admin = inject(AdminService);
+  admin = inject(AdminService);
   n = computed(() => {
     const acc = this.admin.accounts().filter((a) => a.active);
     return {

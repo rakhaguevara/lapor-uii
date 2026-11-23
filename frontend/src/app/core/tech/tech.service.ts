@@ -40,7 +40,19 @@ export class TechService {
   // Foto bukti penyelesaian (alamat sementara di browser, sampai backend mengembalikan fotonya)
   readonly proofs = signal<Record<string, string>>({});
 
-  async load(): Promise<void> {
+  // false selama pemuatan pertama; dipakai halaman untuk kerangka pemuatan
+  readonly loaded = signal(false);
+
+  async load(silent = false): Promise<void> {
+    if (!silent) this.loaded.set(false);
+    try {
+      await this.fetchTasks();
+    } finally {
+      this.loaded.set(true);
+    }
+  }
+
+  private async fetchTasks(): Promise<void> {
     const tab = (t: string) => firstValueFrom(this.http.get<unknown>('/api/reports/tasks', { params: { tab: t, per_page: '15' } })).then((r) => rows(r).map(toAdminReport));
     const [a, m] = await Promise.all([tab('available'), tab('mine')]);
     this.available.set(a);
@@ -57,7 +69,7 @@ export class TechService {
 
   async take(uuid: string): Promise<void> {
     await this.post('/api/reports/self-assign', uuid, {});
-    await this.load();
+    await this.load(true);
   }
 
   // ACCEPT = terima penugasan dari Admin Unit
@@ -67,7 +79,7 @@ export class TechService {
 
   async reject(uuid: string, reason: string): Promise<void> {
     await this.post('/api/reports/respond-assignment', uuid, { action: 'REJECT', reject_reason: reason });
-    await this.load();
+    await this.load(true);
   }
 
   // Catatan (untuk semua status) dikirim sebagai `note`, sesuai Swagger POST /reports/status.
@@ -77,6 +89,6 @@ export class TechService {
     if (opts.note) form.append('note', opts.note);
     if (opts.proof) { form.append('proof_photo', opts.proof); this.proofs.update((p) => ({ ...p, [ticket]: URL.createObjectURL(opts.proof!) })); }
     await this.post('/api/reports/status', uuid, form);
-    await this.load();
+    await this.load(true);
   }
 }

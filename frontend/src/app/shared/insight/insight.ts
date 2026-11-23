@@ -1,6 +1,7 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { ADMIN_STATUSES, AdminService, monthLabel } from '../../core/admin/admin.service';
 import { ALL_STATUS_LABEL } from '../../core/reports/report.model';
+import { Skeleton } from '../skeleton/skeleton';
 
 const pct = (n: number) => (Math.round(n * 10) / 10).toString().replace('.', ',') + '%';
 const bar = (n: number, max: number) => (max ? Math.max(4, Math.round((n / max) * 100)) : 0) + '%';
@@ -12,7 +13,11 @@ const bar = (n: number, max: number) => (max ? Math.max(4, Math.round((n / max) 
 */
 @Component({
   selector: 'app-insight',
+  imports: [Skeleton],
   template: `
+    @if (!admin.reportsLoaded()) {
+      <app-skeleton variant="dashboard" />
+    } @else {
     <div class="stack">
       <section class="grid-4" aria-label="Ringkasan">
         <div class="card stat"><span>Total laporan</span><strong>{{ s().total }}</strong></div>
@@ -62,13 +67,14 @@ const bar = (n: number, max: number) => (max ? Math.max(4, Math.round((n / max) 
         </div>
       }
     </div>
+    }
   `,
   styles: `
     .rows { margin-top: 16px; }
   `,
 })
 export class Insight {
-  private admin = inject(AdminService);
+  admin = inject(AdminService);
   full = input(false);
 
   s = computed(() => {

@@ -75,6 +75,11 @@ export class AdminService {
   readonly buildings = signal<Building[]>([]);
   readonly accounts = signal<Account[]>([]);
 
+  // false selama pemuatan pertama tiap bagian; dipakai halaman untuk kerangka pemuatan
+  readonly reportsLoaded = signal(false);
+  readonly buildingsLoaded = signal(false);
+  readonly accountsLoaded = signal(false);
+
   // Bulan yang dipilih di dashboard/statistik ("2026-11"). Kosong = bulan terbaru yang punya laporan.
   readonly monthPick = signal('');
   readonly months = computed(() => [...new Set(this.reports().map((r) => r.createdAt.slice(0, 7)))].sort().reverse());
@@ -83,27 +88,41 @@ export class AdminService {
 
   // ---------- Muat data ----------
   async loadReports(): Promise<void> {
-    this.reports.set(rows(await this.get('/api/reports', { per_page: '100' })).map(toAdminReport));
+    try {
+      this.reports.set(rows(await this.get('/api/reports', { per_page: '100' })).map(toAdminReport));
+    } finally {
+      this.reportsLoaded.set(true);
+    }
   }
 
   async loadBuildings(): Promise<void> {
-    this.buildings.set(rows(await this.get('/api/locations')).map((l) => ({
-      id: l['uuid'], name: l['name'], code: l['code'] ?? '', faculty: l['faculty'] ?? '', floors: l['floor_count'] ?? 0, active: l['is_active'] !== false,
-    })));
+    try {
+      this.buildings.set(rows(await this.get('/api/locations')).map((l) => ({
+        id: l['uuid'], name: l['name'], code: l['code'] ?? '', faculty: l['faculty'] ?? '', floors: l['floor_count'] ?? 0, active: l['is_active'] !== false,
+      })));
+    } finally {
+      this.buildingsLoaded.set(true);
+    }
   }
 
   async loadAccounts(): Promise<void> {
-    this.accounts.set(rows(await this.get('/api/admin/users')).map((u) => {
-      const bs: Raw[] = u['buildings'] ?? u['building_scopes'] ?? u['scopes'] ?? [];
-      return {
-        id: u['uuid'], name: u['full_name'], email: u['email'], role: u['role'], active: u['is_active'] !== false,
-        buildingIds: bs.map((b) => b['uuid'] ?? b['building_uuid']), buildings: bs.map((b) => b['name'] ?? b['building']?.name ?? '').filter(Boolean).join(', '),
-      };
-    }));
+    try {
+      this.accounts.set(rows(await this.get('/api/admin/users')).map((u) => {
+        const bs: Raw[] = u['buildings'] ?? u['building_scopes'] ?? u['scopes'] ?? [];
+        return {
+          id: u['uuid'], name: u['full_name'], email: u['email'], role: u['role'], active: u['is_active'] !== false,
+          buildingIds: bs.map((b) => b['uuid'] ?? b['building_uuid']), buildings: bs.map((b) => b['name'] ?? b['building']?.name ?? '').filter(Boolean).join(', '),
+        };
+      }));
+    } finally {
+      this.accountsLoaded.set(true);
+    }
   }
 
   // Data awal setelah login (tiap peran butuh hal berbeda)
   async load(role: string): Promise<void> {
+    if (role === 'ADMIN_UNIT') { this.reportsLoaded.set(false); this.buildingsLoaded.set(false); }
+    if (role === 'ADMIN_UNIV') { this.buildingsLoaded.set(false); this.accountsLoaded.set(false); }
     if (role === 'ADMIN_UNIT') await Promise.all([this.loadReports(), this.loadBuildings()]);
     if (role === 'ADMIN_UNIV') await Promise.all([this.loadBuildings(), this.loadAccounts()]);
   }

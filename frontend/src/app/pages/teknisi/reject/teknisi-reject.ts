@@ -29,7 +29,7 @@ import { PageHead } from '../../../shared/page-head/page-head';
 
         <div class="foot">
           <a class="btn" [routerLink]="['/teknisi/tugas', r.id]">Batal</a>
-          <button class="btn btn-primary" type="submit" [disabled]="busy()">Kirim alasan</button>
+          <button class="btn btn-danger" type="submit" [disabled]="busy()">Kirim alasan</button>
         </div>
       </form>
     } @else {
@@ -42,8 +42,8 @@ import { PageHead } from '../../../shared/page-head/page-head';
     textarea { min-height: 116px; }
     .error { color: var(--red); font-size: 12px; }
     .foot { display: flex; justify-content: space-between; gap: 16px; }
-    .foot .btn-primary { min-width: 210px; }
-    @media (max-width: 800px) { .foot { flex-direction: column-reverse; } .foot .btn-primary { min-width: 0; } }
+    .foot .btn-danger { min-width: 210px; }
+    @media (max-width: 800px) { .foot { flex-direction: column-reverse; } .foot .btn-danger { min-width: 0; } }
   `,
 })
 export class TeknisiReject {

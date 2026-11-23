@@ -22,21 +22,48 @@ Menetapkan pendekatan teknis frontend agar tim dapat membangun antarmuka web yan
 
 ## 2. Ringkasan Keputusan Teknologi
 
-| Area | Keputusan | Status |
+Stack di bawah sudah final dan sesuai kode di folder `frontend/`. Versi diambil dari `package.json`.
+
+### 2.1 Frontend
+
+| Area | Teknologi | Keterangan |
 |---|---|---|
-| Framework | Angular (versi mengikuti standar BSI) | Tetap, karena BSI sudah memakai Angular. Versi: perlu konfirmasi |
-| Bahasa | TypeScript | Tetap (bawaan Angular) |
-| Jenis aplikasi | SPA, tanpa SSR | Usulan |
-| Komponen UI | Angular Material atau PrimeNG, mengikuti pustaka yang dipakai BSI | Perlu konfirmasi |
-| Gaya | Tema biru UII, aksen emas, latar putih, mobile first | Usulan |
-| Form | Reactive Forms | Usulan |
-| Data dari API | HttpClient + RxJS, tipe dari spesifikasi OpenAPI | Usulan |
-| State | Service dengan Signals atau RxJS, tanpa pustaka state global pada tahap MVP | Usulan |
-| Grafik | Chart.js (ng2-charts) atau ngx-charts | Usulan |
-| Kompresi foto | browser-image-compression | Usulan |
-| Unit test | Jest atau Karma+Jasmine mengikuti standar BSI | Perlu konfirmasi |
-| E2E test | Playwright | Usulan |
-| Autentikasi | Email dan password (workflow diagram). SSO UII sebagai alternatif | Perlu konfirmasi (lihat bagian 6) |
+| Framework | Angular 22 (`^22.3.0`) | Komponen standalone, tanpa NgModule. Dibuat dengan Angular CLI 22.3 |
+| Bahasa | TypeScript 6.0 (`~6.0.2`) | Mode strict |
+| Jenis aplikasi | SPA, tanpa SSR | Routing sisi klien, halaman dimuat lazy (`loadComponent`, `loadChildren`) |
+| Build tool | `@angular/build` (builder `application`) | Berbasis esbuild + Vite untuk dev server |
+| Reaktivitas | Signals + RxJS 7.8 (`~7.8.0`) | Signals untuk state komponen dan layanan, RxJS untuk HTTP. Memakai `@angular/core/rxjs-interop`. Tanpa pustaka state global |
+| Form | Reactive Forms (`@angular/forms`) | Validasi di klien hanya untuk kenyamanan |
+| HTTP | `HttpClient` + interceptor fungsional | `authInterceptor` (token Bearer, tangani 401), `mockInterceptor` (mode demo), `apiUrlInterceptor` (awalan alamat backend) |
+| Routing & akses | `@angular/router` + guard fungsional | `authGuard`, `guestGuard`, `roleGuard(peran)`. Guard hanya kenyamanan, Backend pemeriksa sebenarnya |
+| Gaya | CSS biasa di `styles.css` + gaya per komponen | Tanpa Tailwind (dihapus), tanpa pustaka komponen UI. Tema biru UII, mobile first |
+| Font | Poppins (Google Fonts) | 400, 500, 600, 700 |
+| Lokalisasi | Locale `id` (`@angular/common/locales/id`) | Tanggal dan angka format Indonesia |
+| Ikon, badge status, tabel | Komponen buatan sendiri di `shared/` | `icon`, `status-badge`, `report-table`, `page-head`, `insight` |
+| Data tiruan | Mode demo (`core/mock/mock-api.ts`) | Backend palsu di browser lewat interceptor, aktif bila `DEMO = true` |
+| Pengembangan | `ng serve` + `proxy.conf.json` | `/api` diteruskan ke backend di Railway, menghindari CORS saat dev |
+| Konfigurasi | `src/environments/` | `apiUrl` kosong saat dev (lewat proxy), berisi alamat Railway saat produksi |
+| Formatter | Prettier 3.8 | |
+| Paket | npm 11 | |
+| Unit test | Vitest (bawaan `ng test`) | Skeleton test tidak dibuat otomatis (`skipTests` di `angular.json`) |
+
+### 2.2 Backend (sejauh terlihat dari sisi frontend)
+
+Kode backend tidak ada di repositori ini. Tabel berikut hanya memuat yang terbukti dari kontrak yang dipakai frontend. Bahasa, framework, dan basis data perlu diisi oleh tim Backend.
+
+| Area | Fakta | Sumber |
+|---|---|---|
+| Gaya API | REST, JSON, awalan `/api` | `proxy.conf.json`, layanan di `core/` |
+| Hosting | Railway (`backend-sira-production.up.railway.app`) | `environments/environment.ts`, `proxy.conf.json` |
+| Autentikasi | Login email + password, token Bearer di header `Authorization`. Logout lewat `/api/auth/logout` | `auth.interceptor.ts`, `auth.service.ts` |
+| Otorisasi | Peran (Pelapor/warga, Teknisi, Admin Unit, Admin Universitas) dan lingkup gedung dipaksakan Backend | `app.routes.ts`, bagian 6 |
+| Format data | Kunci `snake_case`, identitas berupa `uuid` | `mock-api.ts` |
+| Unggah foto | `multipart/form-data` pada `POST /api/reports` | `mock-api.ts` |
+| Endpoint yang dipakai | `auth/login`, `auth/logout`, `locations`, `damage-categories`, `reports` (+ `public`, `my-reports`, `detail`, `like`, `tasks`, `status`, `priority`, `assign`, `self-assign`, `respond-assignment`, `technicians`), `admin/users` (+ `toggle-status`) | pencarian `/api/` di `frontend/src` |
+| Spesifikasi API | OpenAPI belum dipakai untuk membuat tipe. Tipe ditulis manual di `core/reports/report.model.ts` | |
+| Akun awal | Admin Universitas pertama dibuat lewat seed data oleh Backend | bagian 6 |
+
+Yang belum ada di repo dan perlu dilengkapi Backend: bahasa dan framework, basis data, penyimpanan foto, cara kerja hash password dan masa berlaku token, serta dokumen OpenAPI.
 
 ## 3. Arsitektur Frontend
 

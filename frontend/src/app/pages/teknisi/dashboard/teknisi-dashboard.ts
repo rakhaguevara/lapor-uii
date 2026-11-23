@@ -3,6 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { TechService } from '../../../core/tech/tech.service';
 import { Icon } from '../../../shared/icon/icon';
 import { PageHead } from '../../../shared/page-head/page-head';
+import { Skeleton } from '../../../shared/skeleton/skeleton';
 import { TaskList, TaskMode } from '../components/task-list/task-list';
 
 export type DashboardMode = 'home' | TaskMode;
@@ -17,7 +18,7 @@ export type DashboardMode = 'home' | TaskMode;
 */
 @Component({
   selector: 'app-teknisi-dashboard',
-  imports: [RouterLink, Icon, PageHead, TaskList],
+  imports: [RouterLink, Icon, PageHead, TaskList, Skeleton],
   template: `
     <app-page-head [title]="title" subtitle="Kelola penanganan fasilitas di gedung tanggung jawab Anda."
       [crumbs]="[{ label: 'Portal Teknisi', link: '/teknisi' }, { label: home ? 'Dashboard Teknisi' : title }]" />
@@ -32,12 +33,16 @@ export type DashboardMode = 'home' | TaskMode;
           <a class="btn btn-primary" routerLink="/teknisi/tersedia">Lihat tugas tersedia <app-icon name="right" [size]="16" [stroke]="2.2" /></a>
         </section>
 
-        <section class="grid-4 stats" aria-label="Ringkasan tugas">
-          <div class="card stat"><span>Tugas tersedia</span><strong>{{ s().available }}</strong></div>
-          <div class="card stat"><span>Tugas Saya</span><strong>{{ s().active }}</strong></div>
-          <div class="card stat"><span>Perlu konfirmasi</span><strong>{{ s().confirm }}</strong></div>
-          <div class="card stat"><span>Selesai bulan ini</span><strong>{{ s().done }}</strong></div>
-        </section>
+        @if (!loaded()) {
+          <app-skeleton class="stats" variant="stats" />
+        } @else {
+          <section class="grid-4 stats" aria-label="Ringkasan tugas">
+            <div class="card stat"><span>Tugas tersedia</span><strong>{{ s().available }}</strong></div>
+            <div class="card stat"><span>Tugas Saya</span><strong>{{ s().active }}</strong></div>
+            <div class="card stat"><span>Perlu konfirmasi</span><strong>{{ s().confirm }}</strong></div>
+            <div class="card stat"><span>Selesai bulan ini</span><strong>{{ s().done }}</strong></div>
+          </section>
+        }
       }
 
       <app-task-list [initial]="tab" />
@@ -61,6 +66,7 @@ export class TeknisiDashboard {
   private mode = inject(ActivatedRoute).snapshot.data['mode'] as DashboardMode;
 
   s = this.tech.stats;
+  loaded = this.tech.loaded;
   home = this.mode === 'home';
   tab: TaskMode = this.home ? 'mine' : (this.mode as TaskMode);
   title = this.home

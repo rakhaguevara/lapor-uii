@@ -1,7 +1,9 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
-import { Report, STEP_REACHED, StatusCode, TIMELINE_STEPS } from '../../../core/reports/report.model';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { map } from 'rxjs';
+import { Report, STEP_REACHED, byPublicOrder, StatusCode, TIMELINE_STEPS } from '../../../core/reports/report.model';
 import { ReportService } from '../../../core/reports/report.service';
 import { Icon } from '../../../shared/icon/icon';
 import { PageHead } from '../../../shared/page-head/page-head';
@@ -17,15 +19,19 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
   selector: 'app-report-detail',
   imports: [RouterLink, DatePipe, Icon, PageHead, StatusBadge],
   template: `
-    <a class="btn back m-only" routerLink="/laporan-saya"><app-icon name="left" [size]="16" [stroke]="2.2" /> Laporan Saya</a>
+    <a class="btn back m-only" [routerLink]="back().link"><app-icon name="left" [size]="16" [stroke]="2.2" /> {{ back().label }}</a>
 
     <app-page-head
       title="Detail laporan"
       subtitle="Layanan fasilitas yang transparan, dari laporan hingga penyelesaian."
       [desktopOnly]="true"
       [crumbs]="[{ label: 'Portal Pelapor' }, { label: 'Detail laporan' }]">
-      <a class="btn d-only" routerLink="/laporan-saya"><app-icon name="left" [size]="16" [stroke]="2" /> Laporan Saya</a>
+      <a class="btn d-only" [routerLink]="back().link"><app-icon name="left" [size]="16" [stroke]="2" /> {{ back().label }}</a>
     </app-page-head>
+
+    @if (skipped().length) {
+      <p class="notice" role="status">{{ skipped().join(', ') }} tidak dapat dibuka, jadi laporan berikutnya yang tersedia ditampilkan.</p>
+    }
 
     @if (report(); as r) {
       <div class="layout">
@@ -54,6 +60,23 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
           </div>
           <p class="reported">Dilaporkan pada {{ r.createdAt | date: "d MMMM y, HH.mm 'WIB'" }}</p>
           <p class="likes d-only"><app-icon name="thumb" [size]="22" /> {{ r.likes }}</p>
+
+          @if (neighbours(); as n) {
+            <!-- Pindah ke laporan lain pada daftar asal tanpa kembali ke daftar -->
+            <nav class="pager" aria-label="Laporan lainnya">
+              @if (n.prev) {
+                <a class="btn" [routerLink]="['/laporan', n.prev]" [queryParams]="params()" (click)="move(-1)"><app-icon name="left" [size]="16" [stroke]="2" /> Sebelumnya</a>
+              } @else {
+                <button class="btn" type="button" disabled><app-icon name="left" [size]="16" [stroke]="2" /> Sebelumnya</button>
+              }
+              <span class="pos">{{ n.pos }} dari {{ n.total }}</span>
+              @if (n.next) {
+                <a class="btn" [routerLink]="['/laporan', n.next]" [queryParams]="params()" (click)="move(1)">Berikutnya <app-icon name="right" [size]="16" [stroke]="2" /></a>
+              } @else {
+                <button class="btn" type="button" disabled>Berikutnya <app-icon name="right" [size]="16" [stroke]="2" /></button>
+              }
+            </nav>
+          }
         </article>
 
         <aside>
@@ -79,15 +102,38 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
         </aside>
       </div>
     } @else if (loading()) {
-      <p class="empty" role="status">Memuat laporan…</p>
+      <!-- Kerangka halaman selagi data dimuat; muncul setelah jeda singkat agar tidak berkedip -->
+      <div class="layout sk-fade" role="status" aria-label="Memuat laporan">
+        <div class="card main">
+          <div class="sk-row"><span class="sk" style="width: 90px"></span><span class="sk" style="width: 80px; height: 28px; border-radius: 14px"></span></div>
+          <span class="sk" style="width: 70%; height: 32px; margin-top: 8px"></span>
+          <span class="sk" style="width: 45%; height: 16px; margin-top: 16px"></span>
+          <span class="sk" style="width: 100%; height: 220px; margin-top: 24px; border-radius: 12px"></span>
+          <span class="sk" style="width: 120px; height: 12px; margin-top: 24px"></span>
+          <span class="sk" style="width: 200px; height: 20px; margin-top: 12px"></span>
+          <span class="sk" style="width: 100%; height: 14px; margin-top: 16px"></span>
+          <span class="sk" style="width: 80%; height: 14px; margin-top: 10px"></span>
+        </div>
+        <aside>
+          <div class="card"><span class="sk" style="width: 160px; height: 20px"></span>
+            <span class="sk" style="width: 100%; height: 14px; margin-top: 28px"></span>
+            <span class="sk" style="width: 100%; height: 14px; margin-top: 24px"></span>
+            <span class="sk" style="width: 100%; height: 14px; margin-top: 24px"></span></div>
+          <div class="card"><span class="sk" style="width: 200px; height: 20px"></span><span class="sk" style="width: 90%; height: 14px; margin-top: 16px"></span></div>
+        </aside>
+      </div>
     } @else {
-      <p class="empty">Laporan tidak ditemukan. <a routerLink="/laporan-saya">Kembali ke Laporan Saya</a></p>
+      <p class="empty">
+        @if (skipped().length) { {{ skipped().join(', ') }} tidak dapat dibuka dan tidak ada laporan lain pada arah itu. }
+        @else { Laporan tidak ditemukan. }
+        <a [routerLink]="back().link">Kembali ke {{ back().label }}</a>
+      </p>
     }
   `,
   styles: `
     .layout { display: grid; grid-template-columns: 1fr 383px; gap: 24px; align-items: start; }
     aside { display: grid; gap: 24px; }
-    .main { display: flex; flex-direction: column; min-height: 690px; }
+    .main { display: flex; flex-direction: column; }
     .top { order: 1; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .ticket { color: var(--blue-600); font-size: 12px; font-weight: 500; }
     .main h2 { order: 2; font-size: 26px; line-height: 1.3; font-weight: 700; }
@@ -99,7 +145,7 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
     .desc { order: 6; }
     h3 { font-size: 18px; font-weight: 600; margin-bottom: 12px; }
     .desc p { font-size: 14px; line-height: 1.6; }
-    .reported { order: 7; margin-top: auto; padding-top: 48px; color: var(--muted); font-size: 12px; }
+    .reported { order: 7; margin-top: 32px; color: var(--muted); font-size: 12px; }
     .likes { order: 8; display: flex; align-items: center; gap: 8px; margin-top: 32px; color: var(--muted); font-size: 14px; font-weight: 500; }
     aside h2 { font-size: 18px; font-weight: 600; }
     .muted { color: var(--muted); font-size: 13px; margin-top: 16px; }
@@ -113,12 +159,18 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
     .timeline small { display: block; font-size: 12px; }
     .timeline p { margin-top: 4px; font-size: 12px; }
 
+    .pager { order: 9; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+    .pager .pos { color: var(--muted); font-size: 13px; text-align: center; }
+    .pager .btn { padding: 0 20px; }
+    .pager .btn:disabled { opacity: 0.45; cursor: default; }
+    .notice { margin-bottom: 16px; padding: 12px 16px; border-radius: var(--r-ctl); background: var(--amber-bg); color: var(--amber); font-size: 13px; }
+    .skeleton .card { display: flex; flex-direction: column; }
+    .sk-row { display: flex; justify-content: space-between; align-items: center; }
     .back { width: 100%; margin-bottom: 20px; border-radius: 12px; color: var(--blue-600); }
 
     @media (max-width: 800px) {
       .layout { grid-template-columns: 1fr; gap: 16px; }
       aside { gap: 16px; }
-      .main { min-height: 0; }
       .top { justify-content: flex-start; gap: 12px; }
       .main h2 { font-size: 21px; }
       .where { display: flex; flex-direction: column; margin: 14px 0 12px; font-size: 13px; }
@@ -129,23 +181,109 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
       h3 { font-size: 15px; font-weight: 700; }
       .desc p { font-size: 13px; }
       .ticket { font-size: 13px; }
-      .reported { padding-top: 16px; margin-top: 0; font-size: 11px; }
+      .reported { margin-top: 16px; font-size: 11px; }
+      .pager .btn { flex: 1; padding: 0 8px; }
+      .pager .pos { order: -1; width: 100%; }
+      .pager { flex-wrap: wrap; }
       .timeline { margin-top: 20px; }
     }
   `,
 })
 export class ReportDetail {
   private service = inject(ReportService);
+  private route = inject(ActivatedRoute);
   steps = TIMELINE_STEPS;
   // Ambil nomor tiket dari URL lalu cari laporannya. Tidak ketemu -> undefined -> tampil pesan.
+  // Nomor tiket dibaca sebagai signal: pindah laporan lewat tombol sebelumnya/berikutnya memakai
+  // komponen yang sama, jadi data harus dimuat ulang tiap alamat berubah.
   report = signal<Report | undefined>(undefined);
   loading = signal(true);
 
+  private id = toSignal(this.route.paramMap.pipe(map((p) => p.get('id') ?? '')), { initialValue: '' });
+  private from = toSignal(this.route.queryParamMap);
+
+  // Tombol kembali mengikuti asal pengguna (?dari=...). Tanpa penanda -> Laporan Saya.
+  back = computed(() => {
+    switch (this.from()?.get('dari')) {
+      case 'publik': return { link: '/laporan-publik', label: 'Laporan publik' };
+      case 'beranda': return { link: '/beranda', label: 'Beranda' };
+      default: return { link: '/laporan-saya', label: 'Laporan Saya' };
+    }
+  });
+
+  // Urutan laporan untuk sebelumnya/berikutnya: ikut daftar asal bila masih tersimpan,
+  // jika tidak (halaman dimuat ulang atau dibuka dari Beranda) pakai urutan bawaan.
+  private order = computed(() => {
+    const origin = this.from()?.get('dari');
+    const want = origin === 'publik' ? 'publik' : 'saya';
+    const nav = this.service.nav();
+    if (origin !== 'beranda' && nav.source === want && nav.ids.includes(this.id())) return nav.ids;
+    return origin === 'publik'
+      ? [...this.service.publicReports()].sort(byPublicOrder).map((r) => r.id)
+      : this.service.reports().map((r) => r.id);
+  });
+
+  neighbours = computed(() => {
+    const ids = this.order();
+    const i = ids.indexOf(this.id());
+    if (i < 0) return null;
+    return { prev: ids[i - 1] ?? null, next: ids[i + 1] ?? null, pos: i + 1, total: ids.length };
+  });
+
+  // Pertahankan penanda asal (?dari=) saat pindah laporan
+  params = computed(() => {
+    const dari = this.from()?.get('dari');
+    return dari ? { dari } : null;
+  });
+
+  private router = inject(Router);
+  skipped = signal<string[]>([]);   // laporan yang gagal dibuka lalu dilewati
+  private dir = 0;                  // arah klik terakhir: 1 = berikutnya, -1 = sebelumnya, 0 = bukan dari tombol
+  private reversed = false;
+
+  // Dipanggil saat Sebelumnya/Berikutnya ditekan
+  move(dir: 1 | -1): void {
+    this.dir = dir;
+    this.reversed = false;
+    this.skipped.set([]);
+  }
+
   constructor() {
-    this.service
-      .find(inject(ActivatedRoute).snapshot.paramMap.get('id') ?? '')
-      .then((r) => this.report.set(r))
-      .finally(() => this.loading.set(false));
+    effect(() => {
+      const id = this.id();
+      this.report.set(undefined);   // kosongkan dulu agar kerangka pemuatan tampil, bukan laporan lama
+      this.loading.set(true);
+      this.service.find(id).then((r) => {
+        if (id !== this.id()) return;                       // pengguna sudah pindah lagi
+        if (r) {
+          this.dir = 0;
+          this.report.set(r);
+          window.scrollTo({ top: 0 });
+        } else if (!this.skipToNext(id)) {
+          this.dir = 0;
+        }
+        if (r || this.dir === 0) this.loading.set(false);
+      });
+    });
+  }
+
+  // Laporan rusak atau hilang: geser ke laporan terdekat yang ada pada arah yang sama.
+  // Bila sudah habis, sekali saja berbalik arah; bila tetap tidak ada, tampilkan pesan.
+  private skipToNext(id: string): boolean {
+    if (this.dir === 0) return false;
+    const ids = this.order();
+    const i = ids.indexOf(id);
+    if (i < 0) return false;
+    let target = ids[i + this.dir];
+    if (!target && !this.reversed) {
+      this.reversed = true;
+      this.dir = -this.dir as 1 | -1;
+      target = ids[i + this.dir];
+    }
+    if (!target) return false;
+    this.skipped.update((l) => [...l, id]);
+    void this.router.navigate(['/laporan', target], { queryParams: this.params(), replaceUrl: true });
+    return true;
   }
 
   reached = (status: StatusCode) => STEP_REACHED[status];

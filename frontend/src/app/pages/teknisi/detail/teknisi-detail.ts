@@ -68,7 +68,7 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
               } @else {
                 <p class="sub">Ditugaskan oleh Admin Unit UII.</p>
                 <button class="btn btn-primary act" type="button" [disabled]="busy()" (click)="start(true)">Terima &amp; mulai</button>
-                <a class="btn act2" [routerLink]="['/teknisi/tugas', r.id, 'tolak']">Tolak penugasan</a>
+                <a class="btn btn-danger-soft act2" [routerLink]="['/teknisi/tugas', r.id, 'tolak']">Tolak penugasan</a>
               }
             } @else if (r.status === 'diproses' || r.status === 'menunggu') {
               <p class="assignee">{{ owner() }} · Anda</p>

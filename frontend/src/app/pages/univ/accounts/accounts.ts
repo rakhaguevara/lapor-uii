@@ -6,11 +6,12 @@ import { Account, AdminService, STAFF_ROLES } from '../../../core/admin/admin.se
 import { ROLE_LABEL } from '../../../core/auth/auth.service';
 import { Icon } from '../../../shared/icon/icon';
 import { PageHead } from '../../../shared/page-head/page-head';
+import { Skeleton } from '../../../shared/skeleton/skeleton';
 
 // KELOLA AKUN (Admin Universitas): cari nama/email, filter status, tambah, ubah, nonaktifkan.
 @Component({
   selector: 'app-accounts',
-  imports: [RouterLink, Icon, PageHead],
+  imports: [RouterLink, Icon, PageHead, Skeleton],
   template: `
     <app-page-head title="Kelola akun" subtitle="Kelola data gedung dan akses pengguna universitas."
       [crumbs]="[{ label: 'Portal Admin Universitas', link: '/univ' }, { label: 'Kelola akun' }]">
@@ -29,6 +30,9 @@ import { PageHead } from '../../../shared/page-head/page-head';
         <p class="sub m-only" style="margin-bottom: 12px">{{ list().length }} ditampilkan</p>
 
         <div class="tr th d-only"><span>Nama / email</span><span>Role</span><span>Cakupan</span><span>Status</span><span></span></div>
+        @if (!admin.accountsLoaded()) {
+          <app-skeleton variant="rows" [count]="5" [cells]="5" cols="2.2fr 1fr 1.4fr 1fr 96px" />
+        } @else {
         @for (a of list(); track a.id) {
           <div class="tr row">
             <span><span class="main">{{ a.name }}</span><span class="mute">{{ a.email }}</span></span>
@@ -42,6 +46,7 @@ import { PageHead } from '../../../shared/page-head/page-head';
             <span class="acts m-only"><a class="btn" [routerLink]="['/univ/akun', a.id]">Lihat / ubah akun</a></span>
           </div>
         } @empty { <p class="empty">Tidak ada akun yang cocok.</p> }
+        }
       </section>
 
       @if (error()) { <p class="alert" role="alert" style="padding: 12px 16px; border-radius: var(--r-ctl); background: var(--red-bg); color: var(--red)">{{ error() }}</p> }
@@ -50,7 +55,7 @@ import { PageHead } from '../../../shared/page-head/page-head';
   `,
 })
 export class Accounts {
-  private admin = inject(AdminService);
+  admin = inject(AdminService);
   saved = toSignal(inject(ActivatedRoute).queryParamMap.pipe(map((p) => p.get('tersimpan') ?? '')), { initialValue: '' });
   q = signal(''); st = signal('aktif');
 

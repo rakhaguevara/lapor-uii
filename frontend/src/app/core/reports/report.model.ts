@@ -26,6 +26,14 @@ export const ALL_STATUS_LABEL: Record<string, string> = {
 // Daftar status untuk dropdown filter
 export const STATUS_OPTIONS = Object.keys(STATUS_LABEL) as StatusCode[];
 
+// Urutan bawaan Laporan publik: belum selesai di atas, selesai di bawah; di tiap kelompok
+// like terbanyak dulu, seri -> terbaru. Dipakai daftar dan tombol sebelumnya/berikutnya di detail.
+export const byPublicOrder = (
+  a: { status: string; likes: number; createdAt: string },
+  b: { status: string; likes: number; createdAt: string },
+): number =>
+  Number(a.status === 'selesai') - Number(b.status === 'selesai') || b.likes - a.likes || b.createdAt.localeCompare(a.createdAt);
+
 // Bentuk satu laporan
 export interface Report {
   uuid: string;        // id internal dari backend (dipakai untuk aksi seperti like)

@@ -61,6 +61,10 @@ export class ReportService {
   readonly reports = this._reports.asReadonly();
   readonly publicReports = this._publicReports.asReadonly();
 
+  // Urutan laporan pada daftar yang sedang dibuka (sesuai filter dan cakupan). Dipakai tombol
+  // sebelumnya/berikutnya di halaman detail agar mengikuti daftar asal.
+  readonly nav = signal<{ source: 'publik' | 'saya'; ids: string[] }>({ source: 'saya', ids: [] });
+
   // Hitungan untuk kartu di Beranda. "computed" dihitung ulang otomatis.
   readonly stats = computed(() => {
     const list = this._reports();
@@ -71,6 +75,10 @@ export class ReportService {
       selesai: list.filter((r) => r.status === 'selesai').length,
     };
   });
+
+  // false selama pemuatan pertama dari backend; halaman memakainya untuk menampilkan kerangka pemuatan.
+  // Pemuatan ulang di latar (setelah like, buat laporan, atau polling) tidak mengubahnya.
+  readonly loaded = signal(false);
 
   // Draft form laporan. null = tidak ada draft.
   readonly draft = signal<ReportDraft | null>(null);
@@ -85,7 +93,16 @@ export class ReportService {
   }
 
   // Ambil semua data dari backend
-  async loadAll(): Promise<void> {
+  async loadAll(silent = false): Promise<void> {
+    if (!silent) this.loaded.set(false);
+    try {
+      await this.fetchAll();
+    } finally {
+      this.loaded.set(true);
+    }
+  }
+
+  private async fetchAll(): Promise<void> {
     const get = <T>(url: string) => firstValueFrom(this.http.get<{ data: T }>(url)).then((r) => r.data);
     const [buildings, categories, mine, all] = await Promise.all([
       get<Item[]>('/api/locations'),
@@ -120,7 +137,7 @@ export class ReportService {
     form.append('description', data.description);
     form.append('photo', photo);
     const res = await firstValueFrom(this.http.post<{ data: ApiReport }>('/api/reports', form));
-    await this.loadAll();
+    await this.loadAll(true);
     return toReport(res.data);
   }
 
@@ -130,6 +147,6 @@ export class ReportService {
     const target = this._publicReports().find((r) => r.id === id);
     if (!target) return;
     await firstValueFrom(this.http.post('/api/reports/like', {}, { params: { uuid: target.uuid } }));
-    await this.loadAll();
+    await this.loadAll(true);
   }
 }

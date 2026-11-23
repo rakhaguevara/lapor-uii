@@ -6,6 +6,7 @@ import { Report } from '../../core/reports/report.model';
 // Baris tabel: sama dengan Report, tetapi status boleh status petugas (ditugaskan, menunggu, dst)
 export type Row = Omit<Report, 'status'> & { status: string };
 import { Icon } from '../icon/icon';
+import { Skeleton } from '../skeleton/skeleton';
 import { StatusBadge } from '../status-badge/status-badge';
 
 /*
@@ -18,9 +19,9 @@ import { StatusBadge } from '../status-badge/status-badge';
 */
 @Component({
   selector: 'app-report-table',
-  imports: [RouterLink, DatePipe, StatusBadge, Icon],
+  imports: [RouterLink, DatePipe, StatusBadge, Icon, Skeleton],
   template: `
-    @if (reports().length === 0) {
+    @if (!loading() && reports().length === 0) {
       <p class="empty">{{ emptyText() }}</p>
     } @else {
       <div class="head d-only">
@@ -34,9 +35,12 @@ import { StatusBadge } from '../status-badge/status-badge';
           }
         </span>
       </div>
+      @if (loading()) {
+        <app-skeleton variant="rows" [count]="4" />
+      } @else {
       @for (r of reports(); track r.id) {
         <article class="row" [attr.data-id]="r.id">
-          <a class="name" [routerLink]="[base(), r.id]">
+          <a class="name" [routerLink]="[base(), r.id]" [queryParams]="from() ? { dari: from() } : null" [attr.title]="'Buka detail ' + r.id">
             <span class="ticket">{{ r.id }}<span class="m-only"> · {{ r.createdAt | date: 'd MMM y' }}</span></span>
             <span class="title">{{ r.title }}</span>
           </a>
@@ -53,11 +57,16 @@ import { StatusBadge } from '../status-badge/status-badge';
                 [class.on]="r.liked"
                 [disabled]="r.status === 'selesai'"
                 [attr.aria-pressed]="r.liked"
+                [attr.title]="r.status === 'selesai' ? 'Laporan selesai tidak bisa disukai' : r.liked ? 'Batalkan suka' : 'Suka laporan ini'"
                 [attr.aria-label]="'Suka laporan ' + r.id + ', ' + r.likes + ' suka'"
                 (click)="like.emit(r.id)">
                 <app-icon name="thumb" [size]="20" />
                 <span class="count d-only">{{ r.likes }}</span>
+                <span class="label m-only">{{ r.status === 'selesai' ? 'Laporan selesai' : r.liked ? 'Anda mendukung' : 'Dukung laporan ini' }} · {{ r.likes }}</span>
               </button>
+              @if (r.status !== 'selesai') {
+                <small class="like-note m-only">Dengan like postingan ini kamu mendukung agar perbaikan segera dilakukan.</small>
+              }
             } @else if (showLike()) {
               <!-- Laporan Saya: jumlah suka hanya ditampilkan -->
               <span class="like static d-only" [attr.aria-label]="r.likes + ' suka'" role="img">
@@ -67,9 +76,10 @@ import { StatusBadge } from '../status-badge/status-badge';
             }
           </span>
           @if (showDetail()) {
-            <a class="more m-only" [routerLink]="[base(), r.id]">Lihat detail <app-icon name="right" [size]="14" [stroke]="2.2" /></a>
+            <a class="more m-only" [routerLink]="[base(), r.id]" [queryParams]="from() ? { dari: from() } : null">Lihat detail <app-icon name="right" [size]="14" [stroke]="2.2" /></a>
           }
         </article>
+      }
       }
     }
   `,
@@ -81,7 +91,8 @@ import { StatusBadge } from '../status-badge/status-badge';
     .sort { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
     .sort:hover { background: var(--white); }
     .row.rise { background: var(--blue-50); transition: background 1.2s ease-out; }
-    .row { min-height: 78px; padding-block: 12px; }
+    .row { min-height: 78px; padding-block: 12px; border-bottom: 1px solid var(--line); transition: background 0.15s ease; }
+    .row:last-child { border-bottom: 0; }
     .name { display: flex; flex-direction: column; color: var(--ink); }
     .ticket { color: var(--blue-600); font-size: 11px; line-height: 1.5; }
     .title { font-weight: 600; font-size: 14px; line-height: 1.5; }
@@ -93,7 +104,16 @@ import { StatusBadge } from '../status-badge/status-badge';
     .like.static { cursor: default; }
     .like.on { color: var(--blue-900); font-weight: 600; }
     .like:disabled { opacity: 0.55; cursor: default; }
+    .name:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 4px; border-radius: 4px; }
     .more { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+
+    /* Petunjuk bagian yang bisa diklik: hanya di perangkat dengan kursor */
+    @media (hover: hover) {
+      .row:hover { background: var(--bg); }
+      .name:hover .title { color: var(--blue-600); text-decoration: underline; text-underline-offset: 3px; }
+      .like:not(:disabled):not(.static):hover { background: var(--blue-50); color: var(--blue-600); }
+      .more:hover { text-decoration: underline; }
+    }
 
     /* HP: setiap baris jadi kartu */
     @media (max-width: 800px) {
@@ -105,12 +125,18 @@ import { StatusBadge } from '../status-badge/status-badge';
       .where small { font-size: 12px; }
       .state { width: 100%; margin-top: 16px; flex-direction: column; align-items: flex-start; gap: 8px; }
       .like { min-width: 36px; min-height: 36px; margin-left: -6px; }
+      .state .like:not(.static) { width: 100%; min-height: 44px; margin-left: 0; padding: 0 16px; gap: 8px; border: 1px solid var(--blue-600); background: var(--white); color: var(--blue-600); font-size: 14px; font-weight: 600; }
+      .state .like.on { background: var(--blue-600); color: var(--white); }
+      .state .like:disabled { border-color: var(--line); color: var(--muted); background: var(--bg); }
+      .like-note { display: block; width: 100%; margin-top: -2px; color: var(--muted); font-size: 11px; line-height: 1.4; text-align: center; }
       .more { margin-top: 14px; font-size: 12.5px; }
     }
   `,
 })
 export class ReportTable {
   reports = input.required<Row[]>();
+  loading = input(false);                 // true = data masih dimuat dari backend -> tampilkan kerangka
+  from = input<string | null>(null);      // asal daftar (publik, beranda); halaman detail memakainya untuk tombol kembali
   base = input('/laporan');               // awal alamat tautan detail
   buildingFirst = input(false);           // true = gedung jadi baris utama (tampilan petugas)   // data yang ditampilkan
   showLike = input(false);                // tampilkan tombol like? (Laporan Saya dan Publik)

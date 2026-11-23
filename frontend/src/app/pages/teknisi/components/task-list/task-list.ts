@@ -30,7 +30,7 @@ export type TaskMode = 'all' | 'available' | 'mine';
           <select id="so" (change)="sort.set($any($event.target).value)"><option value="new">Terbaru</option><option value="old">Terlama</option><option value="likes">Suka terbanyak</option></select></div>
       </div>
 
-      <app-task-table [tasks]="list()" emptyText="Tidak ada tugas." />
+      <app-task-table [tasks]="list()" [loading]="!tech.loaded()" emptyText="Tidak ada tugas." />
     </section>
 
     <p class="note"><strong style="font-size: 15px; font-weight: 600">Hanya tugas {{ tech.building() ? 'Gedung ' + tech.building() : 'di gedung tanggung jawab Anda' }} yang ditampilkan.</strong><br>

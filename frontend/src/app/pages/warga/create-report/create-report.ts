@@ -121,9 +121,18 @@ import { PageHead } from '../../../shared/page-head/page-head';
         <section class="card tips d-only">
           <h2>Laporan yang baik, penanganan lebih cepat.</h2>
           <ol>
-            <li><b>01</b> Pastikan lokasi tepat</li>
-            <li><b>02</b> Ambil foto yang jelas</li>
-            <li><b>03</b> Jelaskan kondisi kerusakan</li>
+            <li>
+              <b>01</b>
+              <div><strong>Pastikan lokasi tepat</strong><p>Pilih gedung dan lantai, lalu tulis ruangan atau titiknya agar teknisi langsung menemukan tempatnya.</p></div>
+            </li>
+            <li>
+              <b>02</b>
+              <div><strong>Ambil foto yang jelas</strong><p>Foto bagian yang rusak dari dekat dengan cahaya cukup, supaya tingkat kerusakannya bisa dinilai tanpa survei ulang.</p></div>
+            </li>
+            <li>
+              <b>03</b>
+              <div><strong>Jelaskan kondisi kerusakan</strong><p>Ceritakan apa yang terjadi, sejak kapan, dan apakah membahayakan, supaya penanganannya bisa diprioritaskan.</p></div>
+            </li>
           </ol>
         </section>
         <section class="card safe d-only">
@@ -170,11 +179,13 @@ import { PageHead } from '../../../shared/page-head/page-head';
     .actions .btn-primary { min-width: 196px; }
 
     .side { display: flex; flex-direction: column; gap: 24px; }
-    .tips { padding: 24px; min-height: 329px; }
+    .tips { padding: 24px; }
     .tips h2 { font-size: 21px; font-weight: 700; line-height: 30px; }
-    .tips ol { display: grid; gap: 35px; margin-top: 26px; }
+    .tips ol { display: grid; gap: 24px; margin-top: 24px; }
     .tips li { display: flex; gap: 20px; font-size: 13px; }
     .tips b { color: var(--blue-600); font-weight: 700; min-width: 20px; }
+    .tips strong { display: block; font-weight: 600; font-size: 13px; }
+    .tips p { margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .safe { min-height: 167px; }
     .safe h2 { font-size: 16px; }
     .safe .sub { margin-top: 20px; font-size: 13px; }

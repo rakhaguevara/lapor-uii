@@ -33,7 +33,7 @@ import { ReportTable } from '../../../shared/report-table/report-table';
 
       <section class="card panel">
         <div class="panel-head"><h2>Laporan prioritas</h2><span class="sub">{{ list().length }} laporan</span></div>
-        <app-report-table [reports]="list()" base="/unit/laporan" [buildingFirst]="true" [showLike]="true" [likeable]="false" [showDetail]="true" [sortable]="true" (sort)="byLikes.set(!byLikes())" emptyText="Tidak ada laporan yang cocok." />
+        <app-report-table [reports]="list()" [loading]="!admin.reportsLoaded()" base="/unit/laporan" [buildingFirst]="true" [showLike]="true" [likeable]="false" [showDetail]="true" [sortable]="true" (sort)="byLikes.set(!byLikes())" emptyText="Tidak ada laporan yang cocok." />
       </section>
 
       <p class="note d-only" style="margin: 0"><strong style="font-size: 18px; font-weight: 600">{{ newCount() }} laporan baru perlu diverifikasi</strong><br>
@@ -42,7 +42,7 @@ import { ReportTable } from '../../../shared/report-table/report-table';
   `,
 })
 export class UnitReports {
-  private admin = inject(AdminService);
+  admin = inject(AdminService);
   statuses = ADMIN_STATUSES;
   priorities = Object.entries(PRIORITY_LABEL);
   label = (s: string) => ALL_STATUS_LABEL[s];

@@ -23,13 +23,13 @@ import { ReportTable } from '../../../shared/report-table/report-table';
           <h2>Laporan prioritas</h2>
           <a class="btn d-only" routerLink="/unit/laporan">Kelola semua <app-icon name="right" [size]="16" [stroke]="2" /></a>
         </div>
-        <app-report-table [reports]="top()" base="/unit/laporan" [buildingFirst]="true" [showLike]="true" [likeable]="false" [showDetail]="true" emptyText="Tidak ada laporan yang perlu ditangani." />
+        <app-report-table [reports]="top()" [loading]="!admin.reportsLoaded()" base="/unit/laporan" [buildingFirst]="true" [showLike]="true" [likeable]="false" [showDetail]="true" emptyText="Tidak ada laporan yang perlu ditangani." />
       </section>
     </div>
   `,
 })
 export class UnitHome {
-  private admin = inject(AdminService);
+  admin = inject(AdminService);
   top = computed(() =>
     this.admin.reports().filter((r) => r.status !== 'selesai' && r.status !== 'gagal').sort((a, b) => b.likes - a.likes).slice(0, 4));
 }

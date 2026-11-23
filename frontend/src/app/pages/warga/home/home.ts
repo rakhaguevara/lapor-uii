@@ -36,10 +36,16 @@ import { ReportTable } from '../../../shared/report-table/report-table';
 
       <!-- Angka ringkasan. Datanya dari service (stats), jadi ikut berubah saat ada laporan baru -->
       <section class="stats" aria-label="Ringkasan laporan">
-        <div class="card"><span>Total laporan</span><strong>{{ stats().total }}</strong></div>
-        <div class="card"><span>Dikirim</span><strong>{{ stats().dikirim }}</strong></div>
-        <div class="card"><span>Diproses</span><strong>{{ stats().diproses }}</strong></div>
-        <div class="card"><span>Selesai</span><strong>{{ stats().selesai }}</strong></div>
+        @if (!service.loaded()) {
+          @for (i of [1, 2, 3, 4]; track i) {
+            <div class="card sk-fade" aria-hidden="true"><span class="sk" style="width: 80px; height: 12px"></span><span class="sk" style="width: 48px; height: 28px; margin-top: 16px"></span></div>
+          }
+        } @else {
+          <div class="card"><span>Total laporan</span><strong>{{ stats().total }}</strong></div>
+          <div class="card"><span>Dikirim</span><strong>{{ stats().dikirim }}</strong></div>
+          <div class="card"><span>Diproses</span><strong>{{ stats().diproses }}</strong></div>
+          <div class="card"><span>Selesai</span><strong>{{ stats().selesai }}</strong></div>
+        }
       </section>
 
       <section class="list">
@@ -47,7 +53,7 @@ import { ReportTable } from '../../../shared/report-table/report-table';
           <h2>Pembaruan terbaru</h2>
           <a class="btn d-only" routerLink="/laporan-saya">Lihat semua <app-icon name="right" [size]="16" [stroke]="2" /></a>
         </div>
-        <app-report-table [reports]="latest()" [showDetail]="true" [sortable]="true" emptyText="Anda belum membuat laporan." (sort)="byStatus.set(!byStatus())" />
+        <app-report-table [reports]="latest()" [loading]="!service.loaded()" from="beranda" [showDetail]="true" [sortable]="true" emptyText="Anda belum membuat laporan." (sort)="byStatus.set(!byStatus())" />
       </section>
     </div>
 
@@ -85,7 +91,7 @@ import { ReportTable } from '../../../shared/report-table/report-table';
   `,
 })
 export class Home {
-  private service = inject(ReportService);
+  service = inject(ReportService);
 
   firstName = this.service.user.name.split(' ')[0];
   stats = this.service.stats;
