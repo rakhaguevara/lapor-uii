@@ -48,7 +48,7 @@ import { StatusBadge } from '../../../../shared/status-badge/status-badge';
     :host { display: block; }
     .head, .row { display: grid; grid-template-columns: 2.1fr 1.33fr 1fr 0.8fr; align-items: center; padding: 0 16px; }
     .head { height: 40px; background: var(--bg); border-radius: 8px; color: var(--muted); font-size: 11px; font-weight: 600; }
-    .row { min-height: 78px; padding-block: 12px; }
+    .row { min-height: 78px; padding-block: 12px; border-radius: 8px; transition: background 0.15s ease; }
     .name { display: flex; flex-direction: column; color: var(--ink); }
     .ticket { color: var(--blue-600); font-size: 11px; line-height: 1.5; }
     .title { font-weight: 600; font-size: 14px; line-height: 1.5; }
@@ -58,6 +58,13 @@ import { StatusBadge } from '../../../../shared/status-badge/status-badge';
     .state { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .like { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 14px; }
     .more { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+
+    /* Petunjuk bagian yang bisa diklik: hanya di perangkat dengan kursor */
+    @media (hover: hover) {
+      .row:hover { background: var(--bg); }
+      .name:hover .title { color: var(--blue-600); text-decoration: underline; text-underline-offset: 3px; }
+      .more:hover { text-decoration: underline; }
+    }
 
     @media (max-width: 800px) {
       .row { display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 16px; padding: 16px; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--white); }

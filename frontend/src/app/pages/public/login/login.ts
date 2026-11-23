@@ -7,6 +7,7 @@ import { TechService } from '../../../core/tech/tech.service';
 import { ReportService } from '../../../core/reports/report.service';
 import { DEMO } from '../../../core/mock/mock-api';
 import { AppHeader } from '../../../layout/app-header/app-header';
+import { ToastService } from '../../../core/ui/toast.service';
 import { Icon } from '../../../shared/icon/icon';
 
 /*
@@ -97,6 +98,7 @@ export class Login {
   private admin = inject(AdminService);
   private tech = inject(TechService);
   private router = inject(Router);
+  private toast = inject(ToastService);
   registered = inject(ActivatedRoute).snapshot.queryParamMap.has('terdaftar');
 
   form = inject(FormBuilder).nonNullable.group({
@@ -141,6 +143,7 @@ export class Login {
       // Menunggu semua halaman laporan di sini membuat hero portal muncul sangat lambat (LCP).
       const role = this.auth.roleCode();
       void (role === 'PELAPOR' ? this.reports.loadAll() : role === 'TEKNISI' ? this.tech.load() : this.admin.load(role));
+      this.toast.show('Berhasil masuk. Selamat datang, ' + this.auth.user().name.split(' ')[0] + '!');
       this.router.navigate(['/portal'], { replaceUrl: true });  // replaceUrl: tombol Kembali tidak membawa ke halaman login lagi
     } else {
       this.failed.set(loginError);

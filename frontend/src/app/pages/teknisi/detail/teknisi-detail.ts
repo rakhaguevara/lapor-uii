@@ -1,14 +1,17 @@
 import { onPhotoError } from '../../../core/reports/photo-url';
 import { DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { PRIORITY_LABEL } from '../../../core/admin/admin.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { errorMessage } from '../../../core/http/api-error';
 import { TechService } from '../../../core/tech/tech.service';
 import { Icon } from '../../../shared/icon/icon';
 import { PageHead } from '../../../shared/page-head/page-head';
+import { ResultDialog, ResultRow } from '../../../shared/result-dialog/result-dialog';
 import { StatusBadge } from '../../../shared/status-badge/status-badge';
 
 /*
@@ -24,7 +27,7 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
 */
 @Component({
   selector: 'app-teknisi-detail',
-  imports: [RouterLink, DatePipe, Icon, PageHead, StatusBadge],
+  imports: [RouterLink, DatePipe, Icon, PageHead, StatusBadge, ResultDialog],
   template: `
     <app-page-head [title]="title()" subtitle="Kelola penanganan fasilitas di gedung tanggung jawab Anda."
       [crumbs]="[{ label: 'Portal Teknisi', link: '/teknisi' }, { label: crumb() }]">
@@ -97,6 +100,12 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
       </div>
     } @else {
       <p class="empty">Tugas tidak ditemukan.</p>
+    }
+
+    @if (result(); as res) {
+      <app-result-dialog [ok]="res.ok" [title]="res.ok ? 'Status berhasil diubah' : 'Status gagal diubah'"
+        [message]="res.message" [rows]="rows()" [code]="res.code" [codeText]="res.ok ? 'OK' : 'Gagal'"
+        [okLabel]="res.ok ? 'Lanjutkan' : 'Tutup'" (closed)="result.set(null)" />
     }
   `,
   styles: `
@@ -178,11 +187,20 @@ export class TeknisiDetail {
     try {
       const r = this.r()!;
       if (accept) await this.tech.accept(r.uuid);
-      await this.tech.setStatus(r.uuid, r.id, 'DIPROSES');
-      this.router.navigate(['/teknisi/tugas', r.id]);
-    } catch {
-      this.error.set('Penanganan belum bisa dimulai. Coba lagi.');
+      const res = await this.tech.setStatus(r.uuid, r.id, 'DIPROSES');
+      this.result.set({ ok: true, code: res.status, message: res.message || 'Penanganan dimulai. Status tugas sekarang Diproses.', to: 'Diproses' });
+    } catch (err) {
+      this.result.set({ ok: false, code: err instanceof HttpErrorResponse ? err.status : 0, message: errorMessage(err, 'Penanganan belum bisa dimulai. Coba lagi.'), to: 'Diproses' });
+    } finally {
+      this.busy.set(false);
     }
-    this.busy.set(false);
   }
+
+  // Hasil perubahan status, ditampilkan sebagai kartu pop-up (lengkap dengan kode dari backend)
+  result = signal<{ ok: boolean; code: number; message: string; to: string } | null>(null);
+  rows = computed<ResultRow[]>(() => {
+    const r = this.r();
+    const res = this.result();
+    return r && res ? [{ label: 'Tugas', value: r.id }, { label: 'Status baru', value: res.to }, { label: 'Gedung', value: r.building }] : [];
+  });
 }

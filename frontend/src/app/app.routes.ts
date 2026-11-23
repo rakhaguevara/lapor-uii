@@ -56,14 +56,14 @@ export const routes: Routes = [
     canActivate: [authGuard], // semua halaman di bawah ini wajib login
     children: [
       { path: 'portal', loadComponent: () => import('./pages/public/portal/portal').then((m) => m.Portal) },
-      { path: 'beranda', loadComponent: () => import('./pages/warga/home/home').then((m) => m.Home) },
-      { path: 'laporan/baru', loadComponent: () => import('./pages/warga/create-report/create-report').then((m) => m.CreateReport) },
-      { path: 'laporan/baru/foto', loadComponent: () => import('./pages/warga/photo-preview/photo-preview').then((m) => m.PhotoPreview) },
-      { path: 'laporan/:id/terkirim', loadComponent: () => import('./pages/warga/report-success/report-success').then((m) => m.ReportSuccess) },
-      { path: 'laporan/:id', loadComponent: () => import('./pages/warga/report-detail/report-detail').then((m) => m.ReportDetail) },
+      { path: 'beranda', canActivate: [roleGuard('PELAPOR')], loadComponent: () => import('./pages/warga/home/home').then((m) => m.Home) },
+      { path: 'laporan/baru', canActivate: [roleGuard('PELAPOR')], loadComponent: () => import('./pages/warga/create-report/create-report').then((m) => m.CreateReport) },
+      { path: 'laporan/baru/foto', canActivate: [roleGuard('PELAPOR')], loadComponent: () => import('./pages/warga/photo-preview/photo-preview').then((m) => m.PhotoPreview) },
+      { path: 'laporan/:id/terkirim', canActivate: [roleGuard('PELAPOR')], loadComponent: () => import('./pages/warga/report-success/report-success').then((m) => m.ReportSuccess) },
+      { path: 'laporan/:id', canActivate: [roleGuard('PELAPOR')], loadComponent: () => import('./pages/warga/report-detail/report-detail').then((m) => m.ReportDetail) },
       // Dua alamat ini memakai halaman yang sama; `data.mode` membedakan isinya
-      { path: 'laporan-saya', data: { mode: 'mine' }, loadComponent: () => import('./pages/warga/reports-page/reports-page').then((m) => m.ReportsPage) },
-      { path: 'laporan-publik', data: { mode: 'public' }, loadComponent: () => import('./pages/warga/reports-page/reports-page').then((m) => m.ReportsPage) },
+      { path: 'laporan-saya', canActivate: [roleGuard('PELAPOR')], data: { mode: 'mine' }, loadComponent: () => import('./pages/warga/reports-page/reports-page').then((m) => m.ReportsPage) },
+      { path: 'laporan-publik', canActivate: [roleGuard('PELAPOR')], data: { mode: 'public' }, loadComponent: () => import('./pages/warga/reports-page/reports-page').then((m) => m.ReportsPage) },
       { path: '**', redirectTo: 'beranda' },
     ],
   },

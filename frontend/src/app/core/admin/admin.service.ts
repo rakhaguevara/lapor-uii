@@ -1,9 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { Report } from '../reports/report.model';
+import { Report, isTestBuilding } from '../reports/report.model';
 import { allPages } from '../http/all-pages';
 import { reportPhoto } from '../reports/photo-url';
+import { likeCount } from '../reports/report.service';
 
 /*
   SERVICE PETUGAS (Admin Unit dan Admin Universitas)
@@ -42,6 +43,13 @@ export function rows(res: unknown): Raw[] {
   return [];
 }
 
+// Tanggal lokal "2026-11-18" dari waktu ISO. Memotong teks mentah salah bulan/hari bila server memakai UTC
+// (laporan jam 02.00 WIB di server tercatat tanggal sebelumnya).
+export function localDay(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('sv-SE');
+}
+
 function toAdminStatus(status: string, hasTech: boolean): AdminStatus {
   switch (status) {
     case 'DITUGASKAN': return 'ditugaskan';
@@ -61,7 +69,7 @@ export function toAdminReport(r: Raw): AdminReport {
     uuid: r['uuid'], id: r['ticket_no'], title: r['title'] || r['category']?.name || 'Laporan kerusakan', building: r['building']?.name ?? '', buildingUuid: r['building']?.uuid ?? '',
     floor: r['floor'] ?? '', room: r['room_name'] ?? '', category: r['category']?.name ?? '', description: r['description'] ?? '',
     photoUrl: reportPhoto(r), status: toAdminStatus(r['status'], !!name), createdAt: r['created_at'],
-    likes: r['like_count'] ?? 0, liked: !!r['is_liked'], priority: r['priority'] ?? 'NORMAL',
+    likes: likeCount(r), liked: !!r['is_liked'], priority: r['priority'] ?? 'NORMAL',
     technician: name, technicianUuid: t?.uuid ?? r['technician_uuid'] ?? '', assignedAt: r['assigned_at'] ?? r['assignment']?.assigned_at ?? '',
     updatedAt: r['completed_at'] ?? r['updated_at'] ?? '',
   };
@@ -82,11 +90,11 @@ export class AdminService {
   readonly buildingsLoaded = signal(false);
   readonly accountsLoaded = signal(false);
 
-  // Bulan yang dipilih di dashboard/statistik ("2026-11"). Kosong = bulan terbaru yang punya laporan.
+  // Bulan yang dipilih di dashboard/statistik ("2026-11"). Kosong = SEMUA bulan, jadi total sama dengan jumlah laporan sebenarnya.
   readonly monthPick = signal('');
-  readonly months = computed(() => [...new Set(this.reports().map((r) => r.createdAt.slice(0, 7)))].sort().reverse());
-  readonly month = computed(() => this.monthPick() || this.months()[0] || '');
-  readonly inMonth = computed(() => this.reports().filter((r) => r.createdAt.slice(0, 7) === this.month()));
+  readonly months = computed(() => [...new Set(this.reports().map((r) => localDay(r.createdAt).slice(0, 7)).filter(Boolean))].sort().reverse());
+  readonly month = computed(() => (this.months().includes(this.monthPick()) ? this.monthPick() : ''));
+  readonly inMonth = computed(() => (this.month() ? this.reports().filter((r) => localDay(r.createdAt).slice(0, 7) === this.month()) : this.reports()));
 
   // ---------- Muat data ----------
   async loadReports(): Promise<void> {
@@ -99,7 +107,7 @@ export class AdminService {
 
   async loadBuildings(): Promise<void> {
     try {
-      this.buildings.set(rows(await this.get('/api/locations')).map((l) => ({
+      this.buildings.set(rows(await this.get('/api/locations')).filter((l) => !isTestBuilding(l['name'])).map((l) => ({
         id: l['uuid'], name: l['name'], code: l['code'] ?? '', faculty: l['faculty'] ?? '', floors: l['floor_count'] ?? 0, active: l['is_active'] !== false,
       })));
     } finally {
@@ -142,14 +150,16 @@ export class AdminService {
     }));
   }
 
-  async assign(reportUuid: string, technicianUuid: string): Promise<void> {
-    await firstValueFrom(this.http.post('/api/reports/assign', { technician_uuid: technicianUuid }, { params: { uuid: reportUuid } }));
-    await this.loadReports();
+  // Mengembalikan kode HTTP dan pesan dari backend, untuk ditampilkan di kartu hasil
+  async assign(reportUuid: string, technicianUuid: string): Promise<{ status: number; message: string }> {
+    const res = await firstValueFrom(this.http.post<{ msg?: string }>('/api/reports/assign', { technician_uuid: technicianUuid }, { params: { uuid: reportUuid }, observe: 'response' }));
+    await this.loadReports().catch(() => {}); // penugasan sudah tersimpan; gagal memuat ulang tidak boleh dilaporkan sebagai gagal menugaskan
+    return { status: res.status, message: res.body?.msg ?? '' };
   }
 
   async setPriority(reportUuid: string, priority: string): Promise<void> {
     await firstValueFrom(this.http.post('/api/reports/priority', { priority }, { params: { uuid: reportUuid } }));
-    await this.loadReports();
+    await this.loadReports().catch(() => {});
   }
 
   // ---------- Gedung ----------

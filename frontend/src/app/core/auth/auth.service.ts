@@ -33,7 +33,7 @@ export class AuthService {
   // Kode peran (PELAPOR, ADMIN_UNIT, ADMIN_UNIV, ...) dan beranda miliknya
   readonly uuid = computed(() => this._user()?.uuid ?? '');
   readonly roleCode = computed(() => this._user()?.role ?? '');
-  readonly home = computed(() => ROLE_HOME[this.roleCode()] ?? '/beranda');
+  readonly home = computed(() => ROLE_HOME[this.roleCode()] ?? '/portal'); // peran tak dikenal: ke portal (bukan /beranda, supaya penjaga peran tidak berputar)
   // Nama dan peran untuk ditampilkan di header
   // Jenis pelapor (Mahasiswa, Dosen, dst). Nama kolomnya bisa berbeda antar versi backend.
   private typeLabel = computed(() => {

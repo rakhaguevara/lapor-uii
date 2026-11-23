@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { allPages } from '../http/all-pages';
 import { reportPhoto } from './photo-url';
-import { CATEGORY_KEYWORDS, DEFAULT_CATEGORY, NewReport, Report, StatusCode } from './report.model';
+import { CATEGORY_KEYWORDS, DEFAULT_CATEGORY, NewReport, Report, StatusCode, isTestBuilding } from './report.model';
 
 // Isi form yang disimpan sementara, supaya tidak hilang saat pelapor membuka preview foto lalu kembali.
 // `photo` = file asli (dikirim ke backend), `photoUrl` = alamat sementara untuk pratinjau.
@@ -58,7 +58,7 @@ async function shrinkPhoto(file: File): Promise<File> {
 }
 
 // Jumlah like: nama kolomnya bisa berbeda antar versi backend (angka, teks, atau larik pengguna).
-function likeCount(r: ApiReport): number {
+export function likeCount(r: object & { is_liked?: boolean }): number {
   const raw = r as unknown as Record<string, unknown>;
   const v = raw['like_count'] ?? raw['likes_count'] ?? raw['total_likes'] ?? raw['likes'];
   const n = Array.isArray(v) ? v.length : Number(v);
@@ -164,7 +164,7 @@ export class ReportService {
       allPages<ApiReport>(this.http, '/api/reports/my-reports').catch(() => [] as ApiReport[]),
       allPages<ApiReport>(this.http, '/api/reports/public').catch(() => [] as ApiReport[]),
     ]);
-    this._buildings.set(buildings);
+    this._buildings.set(buildings.filter((b) => !isTestBuilding(b.name)));
     this._categories.set(categories);
     this._reports.set(mine.map(toReport));
     this._publicReports.set(all.map(toReport));

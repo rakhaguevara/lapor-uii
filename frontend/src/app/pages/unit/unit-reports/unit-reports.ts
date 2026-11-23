@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { AdminService, ADMIN_STATUSES, PRIORITY_LABEL } from '../../../core/admin/admin.service';
-import { ALL_STATUS_LABEL } from '../../../core/reports/report.model';
+import { ALL_STATUS_LABEL, LIKE_ORDER_OPTIONS, byLikeOrder } from '../../../core/reports/report.model';
 import { Icon } from '../../../shared/icon/icon';
 import { PageHead } from '../../../shared/page-head/page-head';
 import { ReportTable } from '../../../shared/report-table/report-table';
@@ -16,16 +16,20 @@ import { ReportTable } from '../../../shared/report-table/report-table';
     <div class="stack">
       <section class="card toolbar d-only" style="padding: 16px" aria-label="Filter laporan">
         <div class="field search grow"><label class="sr-only" for="q">Cari</label><app-icon name="search" [size]="16" />
-          <input id="q" type="search" placeholder="Cari tiket atau kerusakan…" [value]="q()" (input)="q.set($any($event.target).value)"></div>
+          <input id="q" type="search" placeholder="Cari tiket atau kerusakan…" [value]="dq()" (input)="dq.set($any($event.target).value)" (keydown.enter)="apply()"></div>
         <div class="field"><label class="sr-only" for="st">Status</label>
-          <select id="st" (change)="st.set($any($event.target).value)"><option value="">Semua status</option>
+          <select id="st" (change)="dst.set($any($event.target).value)"><option value="">Semua status</option>
             @for (s of statuses; track s) { <option [value]="s">{{ label(s) }}</option> }</select></div>
+        <div class="field"><label class="sr-only" for="lk">Urutan suka</label>
+          <select id="lk" [value]="dlk()" (change)="dlk.set($any($event.target).value)">
+            @for (o of likeOptions; track o.value) { <option [value]="o.value">{{ o.label }}</option> }</select></div>
         <div class="field"><label class="sr-only" for="pr">Prioritas</label>
-          <select id="pr" (change)="pr.set($any($event.target).value)"><option value="">Semua prioritas</option>
+          <select id="pr" (change)="dpr.set($any($event.target).value)"><option value="">Semua prioritas</option>
             @for (p of priorities; track p[0]) { <option [value]="p[0]">{{ p[1] }}</option> }</select></div>
         <div class="field"><label class="sr-only" for="gd">Gedung</label>
-          <select id="gd" (change)="gd.set($any($event.target).value)"><option value="">Semua gedung</option>
+          <select id="gd" (change)="dgd.set($any($event.target).value)"><option value="">Semua gedung</option>
             @for (b of buildings(); track b) { <option [value]="b">{{ b }}</option> }</select></div>
+        <button class="btn btn-primary" type="button" (click)="apply()">Cari</button>
       </section>
 
       <!-- HP: kotak info dulu, lalu ringkasan filter (desain tanpa kolom filter) -->
@@ -46,7 +50,12 @@ export class UnitReports {
   statuses = ADMIN_STATUSES;
   priorities = Object.entries(PRIORITY_LABEL);
   label = (s: string) => ALL_STATUS_LABEL[s];
+  // Filter baru berlaku setelah tombol Cari ditekan (atau Enter di kotak cari): tanpa d = yang dipakai daftar, d* = isian di layar
   q = signal(''); st = signal(''); pr = signal(''); gd = signal('');
+  dq = signal(''); dst = signal(''); dpr = signal(''); dgd = signal('');
+  lk = signal(''); dlk = signal('');   // urutan suka: '' semua, 'most' terbanyak, 'least' sedikit
+  likeOptions = LIKE_ORDER_OPTIONS;
+  apply(): void { this.q.set(this.dq()); this.st.set(this.dst()); this.pr.set(this.dpr()); this.gd.set(this.dgd()); this.lk.set(this.dlk()); }
   byLikes = signal(false);
 
   buildings = computed(() => [...new Set(this.admin.reports().map((r) => r.building))]);
@@ -56,6 +65,7 @@ export class UnitReports {
     const out = this.admin.reports().filter((r) =>
       (!q || r.id.toLowerCase().includes(q) || r.title.toLowerCase().includes(q)) &&
       (!this.st() || r.status === this.st()) && (!this.pr() || r.priority === this.pr()) && (!this.gd() || r.building === this.gd()));
+    if (this.lk()) return byLikeOrder(out, this.lk());
     return this.byLikes() ? [...out].sort((a, b) => b.likes - a.likes) : out;
   });
 }

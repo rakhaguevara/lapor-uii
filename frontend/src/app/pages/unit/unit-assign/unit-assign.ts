@@ -1,22 +1,25 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { AdminService, Technician } from '../../../core/admin/admin.service';
+import { errorMessage } from '../../../core/http/api-error';
 import { PageHead } from '../../../shared/page-head/page-head';
+import { ResultDialog, ResultRow } from '../../../shared/result-dialog/result-dialog';
 
 // TUGASKAN TEKNISI: GET /reports/technicians?building_uuid= (teknisi di gedung laporan),
 // lalu POST /reports/assign. Kolom catatan di desain tidak punya kolom di API, jadi tidak dikirim.
 @Component({
   selector: 'app-unit-assign',
-  imports: [RouterLink, PageHead],
+  imports: [RouterLink, PageHead, ResultDialog],
   template: `
     <app-page-head title="Tugaskan teknisi" subtitle="Prioritaskan laporan dan koordinasikan penanganan fasilitas."
       [crumbs]="[{ label: 'Portal Admin Unit', link: '/unit' }, { label: 'Tugaskan teknisi' }]" />
 
     @if (r(); as r) {
       <div class="split">
-        <form class="card form-card" style="max-width: none" (ngSubmit)="confirm()" novalidate>
+        <form class="card form-card" style="max-width: none" (submit)="$event.preventDefault(); confirm()" novalidate>
           <h2 style="font-size: 22px; font-weight: 700">Pilih teknisi yang sesuai</h2>
           <p class="sub" style="margin: 8px 0 28px">{{ r.id }} · {{ r.category }} · {{ r.building }}</p>
 
@@ -45,12 +48,18 @@ import { PageHead } from '../../../shared/page-head/page-head';
         </aside>
       </div>
     } @else {
-      <p class="empty">Laporan tidak ditemukan.</p>
+      <p class="empty">{{ admin.reportsLoaded() ? 'Laporan tidak ditemukan.' : 'Memuat laporan…' }}</p>
+    }
+
+    @if (result(); as res) {
+      <app-result-dialog [ok]="res.ok" [title]="res.ok ? 'Teknisi berhasil ditugaskan' : 'Teknisi gagal ditugaskan'"
+        [message]="res.message" [rows]="rows()" [code]="res.code" [codeText]="res.ok ? 'OK' : 'Gagal'"
+        [okLabel]="res.ok ? 'Lihat detail laporan' : 'Tutup'" (closed)="closeResult()" />
     }
   `,
 })
 export class UnitAssign {
-  private admin = inject(AdminService);
+  admin = inject(AdminService);
   private router = inject(Router);
   private id = toSignal(inject(ActivatedRoute).paramMap.pipe(map((p) => p.get('id') ?? '')), { initialValue: '' });
 
@@ -62,23 +71,53 @@ export class UnitAssign {
   error = signal('');
 
   constructor() {
-    const r = this.r();
-    this.admin.technicians(r?.buildingUuid ?? '')
-      .then((t) => { this.techs.set(t); const cur = t.find((x) => x.uuid === r?.technicianUuid); if (cur) this.pick.set(cur.uuid); })
-      .catch(() => this.error.set('Daftar teknisi belum bisa dimuat.'))
-      .finally(() => this.loading.set(false));
+    // Muat teknisi setelah laporan tersedia. Kalau halaman dibuka sebelum daftar laporan selesai dimuat
+    // (mis. langsung setelah login), gedung laporan belum diketahui dan daftar teknisi akan salah / tidak terfilter.
+    effect(() => {
+      const r = this.r();
+      if (!r) return;
+      untracked(() => {
+        this.loading.set(true);
+        this.techs.set([]);
+        this.admin.technicians(r.buildingUuid)
+          .then((t) => { this.techs.set(t); const cur = t.find((x) => x.uuid === r.technicianUuid); if (cur) this.pick.set(cur.uuid); })
+          .catch(() => this.error.set('Daftar teknisi belum bisa dimuat.'))
+          .finally(() => this.loading.set(false));
+      });
+    });
   }
+
+  // Hasil penugasan, ditampilkan sebagai kartu pop-up (berhasil atau gagal, lengkap dengan kode dari backend)
+  result = signal<{ ok: boolean; code: number; message: string; tech: string } | null>(null);
+
+  rows = computed<ResultRow[]>(() => {
+    const r = this.r();
+    const res = this.result();
+    return r && res ? [{ label: 'Laporan', value: r.id }, { label: 'Teknisi', value: res.tech }, { label: 'Gedung', value: r.building }] : [];
+  });
 
   async confirm(): Promise<void> {
     if (!this.pick() || this.busy()) return;
     this.busy.set(true);
     this.error.set('');
+    const tech = this.techs().find((t) => t.uuid === this.pick())?.name ?? '';
     try {
-      await this.admin.assign(this.r()!.uuid, this.pick());
-      this.router.navigate(['/unit/laporan', this.id()], { queryParams: { tersimpan: 1 } });
-    } catch {
-      this.error.set('Penugasan belum tersimpan. Coba lagi.');
+      const res = await this.admin.assign(this.r()!.uuid, this.pick());
+      this.result.set({ ok: true, code: res.status, message: res.message || 'Teknisi berhasil ditugaskan untuk laporan ini.', tech });
+    } catch (err) {
+      const code = err instanceof HttpErrorResponse ? err.status : 0;
+      const message = code === 401 || code === 403
+        ? 'Penugasan ditolak server. Pastikan akun Admin Unit Anda punya akses ke gedung laporan ini.'
+        : errorMessage(err, 'Penugasan belum tersimpan. Coba lagi.');
+      this.result.set({ ok: false, code, message, tech });
     }
     this.busy.set(false);
+  }
+
+  // Tutup kartu: kalau berhasil, kembali ke detail laporan; kalau gagal, tetap di halaman untuk mencoba lagi
+  closeResult(): void {
+    const ok = this.result()?.ok;
+    this.result.set(null);
+    if (ok) this.router.navigate(['/unit/laporan', this.id()], { queryParams: { tersimpan: 1 } });
   }
 }

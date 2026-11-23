@@ -22,10 +22,11 @@ import { Skeleton } from '../../../shared/skeleton/skeleton';
       <section class="card tbl" style="padding: 16px; --cols: 2.2fr 1fr 1.4fr 1fr 96px">
         <div class="toolbar" style="padding: 4px 0 16px">
           <div class="field search grow"><label class="sr-only" for="q">Cari</label><app-icon name="search" [size]="16" />
-            <input id="q" type="search" placeholder="Cari nama atau email…" [value]="q()" (input)="q.set($any($event.target).value)"></div>
+            <input id="q" type="search" placeholder="Cari nama atau email…" [value]="dq()" (input)="dq.set($any($event.target).value)" (keydown.enter)="apply()"></div>
           <div class="field"><label class="sr-only" for="st">Status</label>
-            <select id="st" (change)="st.set($any($event.target).value)">
+            <select id="st" (change)="dst.set($any($event.target).value)">
               <option value="aktif">Status aktif</option><option value="nonaktif">Nonaktif</option><option value="">Semua status</option></select></div>
+          <button class="btn btn-primary" type="button" (click)="apply()">Cari</button>
         </div>
         <p class="sub m-only" style="margin-bottom: 12px">{{ list().length }} ditampilkan</p>
 
@@ -57,7 +58,10 @@ import { Skeleton } from '../../../shared/skeleton/skeleton';
 export class Accounts {
   admin = inject(AdminService);
   saved = toSignal(inject(ActivatedRoute).queryParamMap.pipe(map((p) => p.get('tersimpan') ?? '')), { initialValue: '' });
+  // Filter baru berlaku setelah tombol Cari ditekan (atau Enter di kotak cari): q/st = yang dipakai daftar, d* = isian di layar
   q = signal(''); st = signal('aktif');
+  dq = signal(''); dst = signal('aktif');
+  apply(): void { this.q.set(this.dq()); this.st.set(this.dst()); }
 
   list = computed(() => {
     const q = this.q().toLowerCase();

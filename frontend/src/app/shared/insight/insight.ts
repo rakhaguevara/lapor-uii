@@ -1,5 +1,5 @@
-import { Component, computed, inject, input } from '@angular/core';
-import { ADMIN_STATUSES, AdminService, monthLabel } from '../../core/admin/admin.service';
+import { Component, DestroyRef, computed, inject, input } from '@angular/core';
+import { ADMIN_STATUSES, AdminService, localDay, monthLabel } from '../../core/admin/admin.service';
 import { ALL_STATUS_LABEL } from '../../core/reports/report.model';
 import { Skeleton } from '../skeleton/skeleton';
 
@@ -83,13 +83,13 @@ export class Insight {
     const selesai = list.filter((r) => r.status === 'selesai').length;
 
     // 7 hari terakhir berakhir di hari laporan terbaru pada bulan itu
-    const end = list.length ? new Date(list.map((r) => r.createdAt).sort().at(-1)!.slice(0, 10) + 'T00:00:00') : new Date();
+    const end = list.length ? new Date(list.map((r) => localDay(r.createdAt)).sort().at(-1)! + 'T00:00:00') : new Date();
     const days = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(end); d.setDate(end.getDate() - (6 - i));
       const key = d.toLocaleDateString('sv-SE');
       return { key, label: d.getDate() + ' ' + d.toLocaleDateString('id-ID', { month: 'short' }), n: 0, h: '' };
     });
-    for (const r of list) { const d = days.find((x) => x.key === r.createdAt.slice(0, 10)); if (d) d.n++; }
+    for (const r of list) { const d = days.find((x) => x.key === localDay(r.createdAt)); if (d) d.n++; }
     const max = Math.max(...days.map((d) => d.n));
     days.forEach((d) => (d.h = d.n ? Math.max(8, Math.round((d.n / max) * 100)) + '%' : '0'));
 
@@ -118,13 +118,15 @@ export class Insight {
     <div class="field" style="min-width: 240px">
       <label class="sr-only" for="bulan">Bulan</label>
       <select id="bulan" (change)="admin.monthPick.set($any($event.target).value)">
+        <option value="" [selected]="!admin.month()">Semua bulan</option>
         @for (m of admin.months(); track m) { <option [value]="m" [selected]="m === admin.month()">{{ label(m) }}</option> }
-        @empty { <option>–</option> }
       </select>
     </div>
   `,
 })
 export class MonthSelect {
   admin = inject(AdminService);
+  // Pilihan bulan hanya berlaku di halaman ini: pindah halaman = kembali ke "Semua bulan"
+  private reset = inject(DestroyRef).onDestroy(() => this.admin.monthPick.set(''));
   label = monthLabel;
 }

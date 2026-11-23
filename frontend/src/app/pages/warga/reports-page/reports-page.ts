@@ -1,6 +1,6 @@
 import { Component, DestroyRef, ElementRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { STATUS_LABEL, STATUS_OPTIONS, StatusCode, byPublicOrder } from '../../../core/reports/report.model';
+import { LIKE_ORDER_OPTIONS, STATUS_LABEL, STATUS_OPTIONS, StatusCode, byLikeOrder, byPublicOrder } from '../../../core/reports/report.model';
 import { ReportService } from '../../../core/reports/report.service';
 import { UnlikeDialog } from '../../../shared/unlike-dialog/unlike-dialog';
 import { Icon } from '../../../shared/icon/icon';
@@ -44,28 +44,35 @@ const WINDOW_DAYS = 30;  // halaman pertama laporan publik
       <label class="search">
         <app-icon name="search" [size]="18" />
         <input type="search" placeholder="Cari tiket atau kerusakan…" aria-label="Cari tiket atau kerusakan"
-          [value]="query()" (input)="query.set(textOf($event))">
+          [value]="dquery()" (input)="dquery.set(textOf($event))" (keydown.enter)="apply()">
       </label>
       <label class="sel">
-        <select aria-label="Filter status" [value]="status()" (change)="status.set(textOf($event))">
+        <select aria-label="Filter status" [value]="dstatus()" (change)="dstatus.set(textOf($event))">
           <option value="">Semua status</option>
-          @for (s of statuses; track s) { <option [value]="s" [selected]="status() === s">{{ labels[s] }}</option> }
+          @for (s of statuses; track s) { <option [value]="s" [selected]="dstatus() === s">{{ labels[s] }}</option> }
         </select>
-        <span class="face m-only" aria-hidden="true">Status: {{ statusText() }} <app-icon name="chevron" [size]="18" [stroke]="2" /></span>
+        <span class="face m-only" aria-hidden="true">Status: {{ draftStatusText() }} <app-icon name="chevron" [size]="18" [stroke]="2" /></span>
       </label>
       <label class="sel">
-        <select aria-label="Filter gedung" [value]="building()" (change)="building.set(textOf($event))">
+        <select aria-label="Filter gedung" [value]="dbuilding()" (change)="dbuilding.set(textOf($event))">
           <option value="">Semua gedung</option>
-          @for (b of service.buildings(); track b) { <option [value]="b" [selected]="building() === b">{{ b }}</option> }
+          @for (b of service.buildings(); track b) { <option [value]="b" [selected]="dbuilding() === b">{{ b }}</option> }
         </select>
-        <span class="face m-only" aria-hidden="true">Gedung: {{ building() || 'Semua gedung' }} <app-icon name="chevron" [size]="18" [stroke]="2" /></span>
+        <span class="face m-only" aria-hidden="true">Gedung: {{ dbuilding() || 'Semua gedung' }} <app-icon name="chevron" [size]="18" [stroke]="2" /></span>
       </label>
+      <label class="sel">
+        <select aria-label="Urutan suka" [value]="dlikes()" (change)="dlikes.set(textOf($event))">
+          @for (o of likeOptions; track o.value) { <option [value]="o.value" [selected]="dlikes() === o.value">{{ o.label }}</option> }
+        </select>
+        <span class="face m-only" aria-hidden="true">Suka: {{ draftLikeText() }} <app-icon name="chevron" [size]="18" [stroke]="2" /></span>
+      </label>
+      <button class="btn btn-primary go" type="button" (click)="apply()">Cari</button>
       <button class="btn reset" type="button" (click)="reset()">Reset</button>
     </section>
 
     @if (filtered()) {
       <section class="chips m-only">
-        <p>{{ statusText() }} · {{ building() || 'Semua gedung' }}</p>
+        <p>{{ statusText() }} · {{ building() || 'Semua gedung' }} · {{ likeText() }}</p>
         <button class="btn" type="button" (click)="reset()">Reset pencarian &amp; filter</button>
       </section>
     }
@@ -127,7 +134,7 @@ const WINDOW_DAYS = 30;  // halaman pertama laporan publik
     </p>
   `,
   styles: `
-    .filters { display: grid; grid-template-columns: 1fr 170px 190px 150px; gap: 16px; align-items: center; padding: 16px 20px 16px 16px; margin-bottom: 24px; }
+    .filters { display: grid; grid-template-columns: 1fr 170px 190px 170px auto auto; gap: 16px; align-items: center; padding: 16px 20px 16px 16px; margin-bottom: 24px; }
     .search { position: relative; display: block; }
     .search app-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--ink); pointer-events: none; }
     .search input { display: block; width: 100%; min-height: 44px; padding: 0 16px 0 44px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--white); font-size: 13px; font-weight: 500; }
@@ -135,6 +142,7 @@ const WINDOW_DAYS = 30;  // halaman pertama laporan publik
     .sel { position: relative; display: block; }
     .sel select { width: 100%; min-height: 44px; padding: 0 40px 0 16px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2314243e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center; appearance: none; font-size: 13px; font-weight: 500; text-overflow: ellipsis; }
     .reset { min-width: 0; }
+    .go { min-width: 0; padding: 0 24px; }
 
     .list { padding: 12px 16px 24px; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--white); min-height: 280px; display: flex; flex-direction: column; }
     .title-row { display: flex; justify-content: space-between; align-items: center; padding: 0 8px 12px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
@@ -169,6 +177,7 @@ const WINDOW_DAYS = 30;  // halaman pertama laporan publik
       .sel select option { color: var(--ink); }
       .face { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; color: var(--blue-600); font-size: 13px; font-weight: 600; pointer-events: none; text-align: center; }
       .reset { display: none; }
+      .go { min-height: 48px; border-radius: 12px; }
       .list { padding: 0; border: 0; background: none; min-height: 0; }
       .title-row { padding: 0; margin-bottom: 16px; border-bottom: 0; }
       .title-row h2 { font-size: 15px; font-weight: 700; }
@@ -193,9 +202,27 @@ export class ReportsPage {
   labels = STATUS_LABEL;
 
   // Nilai filter saat ini
+  // Filter baru berlaku setelah tombol Cari ditekan (atau Enter di kotak cari): query/status/building = yang dipakai daftar,
+  // d* = isian di layar. Daftar tidak dihitung ulang tiap ketikan atau ganti pilihan.
   query = signal('');
   status = signal('');
   building = signal('');
+  dquery = signal('');
+  dstatus = signal('');
+  dbuilding = signal('');
+  likes = signal('');     // urutan suka yang dipakai daftar ('' semua, 'most' terbanyak, 'least' sedikit)
+  dlikes = signal('');
+  likeOptions = LIKE_ORDER_OPTIONS;
+  draftLikeText = computed(() => LIKE_ORDER_OPTIONS.find((o) => o.value === this.dlikes())?.label ?? 'Semua suka');
+  likeText = computed(() => LIKE_ORDER_OPTIONS.find((o) => o.value === this.likes())?.label ?? 'Semua suka');
+  draftStatusText = computed(() => (this.dstatus() ? STATUS_LABEL[this.dstatus() as StatusCode] : 'Semua status'));
+
+  apply(): void {
+    this.query.set(this.dquery());
+    this.status.set(this.dstatus());
+    this.building.set(this.dbuilding());
+    this.likes.set(this.dlikes());
+  }
   byStatus = signal(false); // true = urut berdasarkan status, false = terbaru dulu
   likeError = signal(false);
   showAll = signal(false);   // laporan publik: false = 30 hari terakhir, true = semua laporan
@@ -206,7 +233,7 @@ export class ReportsPage {
     effect(() => this.service.nav.set({ source: this.isPublic ? 'publik' : 'saya', ids: this.shown().map((r) => r.id) }));
     // Ganti kata kunci, filter, urutan, atau cakupan -> kembali ke halaman 1
     effect(() => {
-      this.query(); this.status(); this.building(); this.byStatus(); this.showAll();
+      this.query(); this.status(); this.building(); this.likes(); this.byStatus(); this.showAll();
       untracked(() => this.page.set(1));
     });
     // Laporan publik: ambil ulang tiap 10 detik supaya like dari pengguna lain ikut menaikkan urutan
@@ -216,7 +243,7 @@ export class ReportsPage {
     }
   }
 
-  filtered = computed(() => !!(this.query().trim() || this.status() || this.building()));
+  filtered = computed(() => !!(this.query().trim() || this.status() || this.building() || this.likes()));
   statusText = computed(() => (this.status() ? STATUS_LABEL[this.status() as StatusCode] : 'Semua status'));
 
   // Daftar yang tampil = semua laporan yang lolos ketiga filter
@@ -231,6 +258,8 @@ export class ReportsPage {
       .filter((r) => !q || r.id.toLowerCase().includes(q) || r.title.toLowerCase().includes(q) || r.room.toLowerCase().includes(q))
       .filter((r) => !this.status() || r.status === this.status())
       .filter((r) => !this.building() || r.building === this.building());
+    // Pilihan suka mengalahkan urutan bawaan (publik: belum selesai di atas)
+    if (this.likes()) return byLikeOrder(result, this.likes());
     // Laporan publik: yang belum selesai di atas, yang selesai di paling bawah.
     // Di tiap kelompok, like terbanyak di atas (seri -> terbaru dulu).
     if (this.isPublic && !this.byStatus()) {
@@ -304,6 +333,11 @@ export class ReportsPage {
   }
 
   reset(): void {
+    this.dquery.set('');
+    this.dstatus.set('');
+    this.dbuilding.set('');
+    this.dlikes.set('');
+    this.likes.set('');
     this.query.set('');
     this.status.set('');
     this.building.set('');

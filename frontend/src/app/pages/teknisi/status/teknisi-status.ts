@@ -1,11 +1,14 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
+import { errorMessage } from '../../../core/http/api-error';
 import { ALL_STATUS_LABEL, PHOTO_MAX_MB, PHOTO_TYPES } from '../../../core/reports/report.model';
 import { TechService, TechStatus } from '../../../core/tech/tech.service';
 import { Icon } from '../../../shared/icon/icon';
 import { PageHead } from '../../../shared/page-head/page-head';
+import { ResultDialog, ResultRow } from '../../../shared/result-dialog/result-dialog';
 
 type Choice = Exclude<TechStatus, 'DIPROSES'>;
 interface Form { page: string; noteLabel: string; photoLabel: string; photoRequired: boolean; hint: string }
@@ -23,7 +26,7 @@ const FORMS: Record<Choice, Form> = {
 */
 @Component({
   selector: 'app-teknisi-status',
-  imports: [RouterLink, Icon, PageHead],
+  imports: [RouterLink, Icon, PageHead, ResultDialog],
   template: `
     <app-page-head [title]="form().page" subtitle="Kelola penanganan fasilitas di gedung tanggung jawab Anda."
       [crumbs]="[{ label: 'Portal Teknisi', link: '/teknisi' }, { label: 'Pembaruan status' }]" />
@@ -94,6 +97,12 @@ const FORMS: Record<Choice, Form> = {
       </div>
     } @else {
       <p class="empty">Tugas tidak ditemukan.</p>
+    }
+
+    @if (result(); as res) {
+      <app-result-dialog [ok]="res.ok" [title]="res.ok ? 'Status berhasil diubah' : 'Status gagal diubah'"
+        [message]="res.message" [rows]="rows()" [code]="res.code" [codeText]="res.ok ? 'OK' : 'Gagal'"
+        [okLabel]="res.ok ? 'Lihat detail tugas' : 'Tutup'" (closed)="closeResult()" />
     }
   `,
   styles: `
@@ -175,18 +184,35 @@ export class TeknisiStatus {
     }
   }
 
+  // Hasil perubahan status, ditampilkan sebagai kartu pop-up (berhasil atau gagal, lengkap dengan kode dari backend)
+  result = signal<{ ok: boolean; code: number; message: string; to: string } | null>(null);
+
+  rows = computed<ResultRow[]>(() => {
+    const r = this.r();
+    const res = this.result();
+    return r && res ? [{ label: 'Tugas', value: r.id }, { label: 'Status baru', value: res.to }, { label: 'Gedung', value: r.building }] : [];
+  });
+
+  closeResult(): void {
+    const ok = this.result()?.ok;
+    this.result.set(null);
+    if (ok) this.router.navigate(['/teknisi/tugas', this.r()?.id ?? this.id()]);
+  }
+
   async save(): Promise<void> {
     this.submitted.set(true);
     this.error.set('');
-    if (!this.note().trim() || this.photoError()) return;
+    if (!this.note().trim() || this.photoError() || this.busy()) return;
     const r = this.r()!;
+    const to = ALL_STATUS_LABEL[this.choice() === 'SELESAI' ? 'selesai' : this.choice() === 'MENUNGGU' ? 'menunggu' : 'gagal'];
     this.busy.set(true);
     try {
-      await this.tech.setStatus(r.uuid, r.id, this.choice(), { proof: this.file(), note: this.note().trim() });
-      this.router.navigate(['/teknisi/tugas', r.id]);
-    } catch {
-      this.error.set('Status belum bisa diubah. Coba lagi.');
+      const res = await this.tech.setStatus(r.uuid, r.id, this.choice(), { proof: this.file(), note: this.note().trim() });
+      this.result.set({ ok: true, code: res.status, message: res.message || 'Status tugas berhasil diperbarui.', to });
+    } catch (err) {
+      this.result.set({ ok: false, code: err instanceof HttpErrorResponse ? err.status : 0, message: errorMessage(err, 'Status belum bisa diubah. Periksa koneksi Anda lalu coba lagi.'), to });
+    } finally {
+      this.busy.set(false);
     }
-    this.busy.set(false);
   }
 }

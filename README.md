@@ -92,11 +92,13 @@ Tidak ada skill siap pakai untuk Angular proyek ini dan pemeriksaan keamanan fro
 
 ```
 src/app/
-  core/       # auth, interceptor, guard, konfigurasi API
-  shared/     # ui, pipes, models (tipe dari OpenAPI)
-  features/   # auth, reports, tasks, unit-admin, dashboard, admin, notifications
-  layout/     # shell, navigasi per peran
+  core/       # auth (service, guard, interceptor), reports, tech, admin (service data), http (pembantu), mock (mode demo), ui (toast)
+  shared/     # komponen dipakai ulang: dialog, unlike-dialog, result-dialog, toast, report-table, page-head, icon, insight, skeleton, status-badge
+  pages/      # satu folder per peran: public, warga (pelapor), teknisi, unit (Admin Unit), univ (Admin Universitas)
+  layout/     # shell (menu per peran), app-header
 ```
+
+Catatan: struktur nyata memakai `pages/` per peran, bukan `features/`. Layanan data (`core/*`) tidak berisi tampilan.
 
 ### 4.2 Aturan wajib
 
@@ -247,3 +249,64 @@ Sebuah tugas selesai jika:
 - Perbarui berkas ini saat keputusan terbuka di bagian 2 terjawab.
 - Tambahkan aturan baru hanya jika sebuah kesalahan sudah terjadi dua kali.
 - Berkas ini singkat dengan sengaja. Detail teknis berada di PTD dan di skill.
+
+---
+
+## 10. Catatan Perubahan (changelog)
+
+Ringkasan perubahan yang sudah dibuat pada frontend. Semua lolos `ng build` produksi. **Belum ada yang diuji terhadap backend asli** dan belum ada tes otomatis yang dijalankan; verifikasi manual di browser tetap perlu.
+
+### 10.1 Performa (LCP halaman login/portal)
+- Login langsung pindah ke `/portal`; data dimuat di latar (tidak lagi menunggu semua halaman laporan). Halaman memakai flag `loaded` untuk kerangka pemuatan.
+- Font Google dimuat tanpa memblokir render; `PreloadAllModules` mengunduh chunk halaman di latar; tinggi shell memakai `100dvh`.
+
+### 10.2 Sesi, peran, dan navigasi
+- `/login`, `/daftar`, `/lupa-sandi` memakai `guestGuard` (sudah login -> ke `/portal`); setelah login memakai `replaceUrl` agar tombol Kembali tidak membuka login lagi.
+- Halaman pelapor memakai `roleGuard('PELAPOR')`. Logo header menuju beranda sesuai peran (`auth.home()`); peran tak dikenal -> `/portal`.
+- Interceptor: 401 pada sebuah aksi tidak lagi langsung mengeluarkan pengguna; sesi diperiksa dulu lewat `GET /api/locations`. Hanya sesi yang benar-benar habis yang diarahkan ke login.
+- Sidebar detail laporan mengikuti asal (`?dari=publik|beranda`). Breadcrumb "Portal Pelapor" menjadi tautan ke `/portal`.
+- Kata sandi di login punya ikon mata. Menu Keluar meminta konfirmasi lalu menampilkan notifikasi.
+- **Lupa kata sandi (tanpa backend):** halaman `/lupa-sandi` memeriksa format email lalu menyusun pesan siap salin untuk Admin Universitas, yang mengganti kata sandi lewat Kelola akun. Reset mandiri lewat email belum ada karena butuh endpoint backend.
+
+### 10.3 Komponen bersama baru
+| Komponen | Fungsi |
+|---|---|
+| `shared/dialog` (`app-dialog`) | Pop-up konfirmasi (hapus, keluar), memakai `<dialog>` bawaan browser |
+| `shared/unlike-dialog` | Pop-up "Batalkan dukungan?", satu desain untuk daftar dan detail |
+| `shared/result-dialog` | Kartu hasil aksi: berhasil/gagal, pesan backend, dan kode HTTP (mis. 200) |
+| `shared/toast` + `core/ui/toast.service` | Notifikasi singkat di pojok kanan atas (login, keluar, hapus, dst) |
+| `.req` (styles.css) | Tanda `*` kolom wajib berwarna merah |
+
+### 10.4 Pelapor
+- Hapus laporan dari halaman detail (hanya pemilik, hanya status Dikirim) dengan pop-up konfirmasi. **Edit laporan dihapus dari UI** karena belum ada di backend.
+- Tombol suka di detail laporan aktif dari semua asal halaman, rata kanan; batal suka meminta konfirmasi.
+- Beranda hanya punya satu tombol "Buat laporan"; tombol "Lihat detail laporan" di HP memakai gaya garis (outline).
+
+### 10.5 Filter daftar
+- Semua filter (tugas teknisi, Kelola laporan, Kelola akun, Kelola gedung, Laporan Saya/publik) baru berlaku setelah tombol **Cari** ditekan (atau Enter di kotak cari). Pola: sinyal tanpa awalan = dipakai daftar, awalan `d` = isian di layar.
+- Dropdown suka punya 3 pilihan: Semua suka, Suka terbanyak, Suka sedikit. Dropdown urutan Terbaru/Terlama di tugas teknisi dihapus.
+- Filter kembali kosong saat pindah tab (teknisi) atau halaman; pilihan bulan statistik kembali ke "Semua bulan" saat halaman ditinggalkan.
+
+### 10.6 Admin Unit, Admin Universitas, Teknisi
+- Data laporan Admin Unit disegarkan otomatis tiap 15 detik; jumlah suka dibaca dengan fungsi yang sama seperti sisi pelapor (`likeCount`).
+- Statistik: pilihan **Semua bulan** (bawaan) agar total sama dengan jumlah laporan; pengelompokan bulan/hari memakai tanggal lokal (`localDay`).
+- Tugaskan teknisi: bug form memuat ulang halaman (dan mengeluarkan sesi) diperbaiki; daftar teknisi dimuat setelah laporan tersedia; hasil tampil di kartu hasil.
+- Teknisi: setiap perubahan status (Diproses, Menunggu, Selesai, Tidak dapat diperbaiki) menampilkan kartu hasil; baris tabel tugas punya efek hover.
+- Gedung yang namanya memuat kata "QA" (data uji di backend bersama) disembunyikan di aplikasi (`isTestBuilding`). Ini hanya penyamaran tampilan, bukan penghapusan data.
+
+### 10.7 Asumsi backend yang belum dikonfirmasi
+Endpoint berikut **ditebak** mengikuti pola yang sudah ada; konfirmasikan ke Backend sebelum dianggap tetap:
+
+| Fitur | Dugaan |
+|---|---|
+| Hapus laporan | `DELETE /api/reports?uuid=` (hanya pemilik, status awal) |
+| Kartu hasil | Backend membalas `{ status, msg }`; `msg` ditampilkan, kode HTTP diambil dari respons |
+| Pemeriksa sesi | `GET /api/locations` dapat dibaca semua peran yang login |
+| Lingkup `/api/reports` | Admin Unit kemungkinan hanya melihat laporan gedung unitnya |
+
+### 10.8 Yang belum dikerjakan
+- Reset kata sandi mandiri lewat email (butuh endpoint backend).
+- Edit laporan oleh pelapor (menunggu backend).
+- Tes otomatis (unit, komponen, E2E) untuk perubahan di atas.
+- Kartu hasil untuk aksi lain (ambil tugas, tolak penugasan, ubah prioritas, simpan gedung/akun).
+

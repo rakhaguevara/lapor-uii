@@ -72,20 +72,16 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
             <p>{{ r.description }}</p>
           </div>
           <p class="reported">Dilaporkan pada {{ r.createdAt | date: "d MMMM y, HH.mm 'WIB'" }}</p>
-          @if (likeable()) {
-            <!-- Laporan publik: suka bisa ditekan. Batal suka meminta konfirmasi. -->
-            <button class="likes like-btn" type="button" [class.on]="r.liked"
-              [disabled]="r.status === 'selesai' || likeBusy()"
-              [attr.aria-pressed]="r.liked"
-              [attr.title]="r.status === 'selesai' ? 'Laporan selesai tidak bisa disukai' : r.liked ? 'Batalkan suka' : 'Suka laporan ini'"
-              [attr.aria-label]="'Suka laporan ' + r.id + ', ' + r.likes + ' suka'"
-              (click)="onLike()">
-              <app-icon name="thumb" [size]="22" /> {{ r.likes }}
-              <span class="like-text">{{ r.status === 'selesai' ? 'Laporan selesai' : r.liked ? 'Anda mendukung' : 'Dukung laporan ini' }}</span>
-            </button>
-          } @else {
-            <p class="likes d-only"><app-icon name="thumb" [size]="22" /> {{ r.likes }}</p>
-          }
+          <!-- Suka bisa ditekan di semua asal (publik, Laporan Saya, Beranda). Batal suka meminta konfirmasi. -->
+          <button class="likes like-btn" type="button" [class.on]="r.liked"
+            [disabled]="r.status === 'selesai' || likeBusy()"
+            [attr.aria-pressed]="r.liked"
+            [attr.title]="r.status === 'selesai' ? 'Laporan selesai tidak bisa disukai' : r.liked ? 'Batalkan suka' : 'Suka laporan ini'"
+            [attr.aria-label]="'Suka laporan ' + r.id + ', ' + r.likes + ' suka'"
+            (click)="onLike()">
+            <app-icon name="thumb" [size]="22" /> {{ r.likes }}
+            <span class="like-text">{{ r.status === 'selesai' ? 'Laporan selesai' : r.liked ? 'Anda mendukung' : 'Dukung laporan ini' }}</span>
+          </button>
 
           @if (neighbours(); as n) {
             <!-- Pindah ke laporan lain pada daftar asal tanpa kembali ke daftar -->
@@ -336,8 +332,7 @@ export class ReportDetail {
 
   reached = (status: StatusCode) => STEP_REACHED[status];
 
-  // ---------- Suka (hanya saat dibuka dari Laporan publik) ----------
-  likeable = computed(() => this.from()?.get('dari') === 'publik');
+  // ---------- Suka (tombol yang sama di semua asal halaman) ----------
   likeBusy = signal(false);
   unliking = signal(false);
 

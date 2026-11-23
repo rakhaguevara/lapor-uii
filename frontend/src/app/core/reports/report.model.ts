@@ -34,6 +34,19 @@ export const byPublicOrder = (
 ): number =>
   Number(a.status === 'selesai') - Number(b.status === 'selesai') || b.likes - a.likes || b.createdAt.localeCompare(a.createdAt);
 
+// Pilihan urutan suka di filter daftar: '' = semua (urutan bawaan), 'most' = suka terbanyak, 'least' = suka sedikit
+export const LIKE_ORDER_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'Semua suka' },
+  { value: 'most', label: 'Suka terbanyak' },
+  { value: 'least', label: 'Suka sedikit' },
+];
+// Urutkan menurut pilihan suka (seri -> terbaru dulu); '' = daftar apa adanya
+export const byLikeOrder = <T extends { likes: number; createdAt: string }>(list: T[], order: string): T[] =>
+  !order ? list : [...list].sort((a, b) => (order === 'most' ? b.likes - a.likes : a.likes - b.likes) || b.createdAt.localeCompare(a.createdAt));
+
+// Gedung uji (data pengujian QA di backend bersama, mis. "QA E2E MWTI8EVX") tidak tampil di aplikasi
+export const isTestBuilding = (name: unknown): boolean => /(^|\s)qa(\s|$)/i.test(String(name ?? ''));
+
 // Bentuk satu laporan
 export interface Report {
   uuid: string;        // id internal dari backend (dipakai untuk aksi seperti like)

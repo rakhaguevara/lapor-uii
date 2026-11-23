@@ -1,6 +1,6 @@
 import { Component, computed, inject, input, signal } from '@angular/core';
 import { ADMIN_STATUSES } from '../../../../core/admin/admin.service';
-import { ALL_STATUS_LABEL } from '../../../../core/reports/report.model';
+import { ALL_STATUS_LABEL, LIKE_ORDER_OPTIONS, byLikeOrder } from '../../../../core/reports/report.model';
 import { TechService } from '../../../../core/tech/tech.service';
 import { Icon } from '../../../../shared/icon/icon';
 import { TaskTable } from '../task-table/task-table';
@@ -16,18 +16,20 @@ export type TaskMode = 'all' | 'available' | 'mine';
     <section class="card">
       <div class="tabs" role="tablist" aria-label="Jenis tugas">
         @for (t of tabs; track t.key) {
-          <button type="button" role="tab" class="btn" [class.btn-primary]="cur() === t.key" [attr.aria-selected]="cur() === t.key" (click)="mode.set(t.key)">{{ t.label }}</button>
+          <button type="button" role="tab" class="btn" [class.btn-primary]="cur() === t.key" [attr.aria-selected]="cur() === t.key" (click)="switchTab(t.key)">{{ t.label }}</button>
         }
       </div>
 
       <div class="toolbar" style="padding: 20px 0">
         <div class="field search grow"><label class="sr-only" for="q">Cari</label><app-icon name="search" [size]="16" />
-          <input id="q" type="search" placeholder="Cari tugas atau ruangan…" [value]="q()" (input)="q.set($any($event.target).value)"></div>
+          <input id="q" type="search" placeholder="Cari tugas atau ruangan…" [value]="dq()" (input)="dq.set($any($event.target).value)" (keydown.enter)="apply()"></div>
         <div class="field"><label class="sr-only" for="st">Status</label>
-          <select id="st" (change)="st.set($any($event.target).value)"><option value="">Semua status</option>
+          <select id="st" [value]="dst()" (change)="dst.set($any($event.target).value)"><option value="">Semua status</option>
             @for (s of statuses; track s) { <option [value]="s">{{ label(s) }}</option> }</select></div>
-        <div class="field"><label class="sr-only" for="so">Urutan</label>
-          <select id="so" (change)="sort.set($any($event.target).value)"><option value="new">Terbaru</option><option value="old">Terlama</option><option value="likes">Suka terbanyak</option></select></div>
+        <div class="field"><label class="sr-only" for="lk">Urutan suka</label>
+          <select id="lk" [value]="dlk()" (change)="dlk.set($any($event.target).value)">
+            @for (o of likeOptions; track o.value) { <option [value]="o.value">{{ o.label }}</option> }</select></div>
+        <button class="btn btn-primary" type="button" (click)="apply()">Cari</button>
       </div>
 
       <app-task-table [tasks]="list()" [loading]="!tech.loaded()" emptyText="Tidak ada tugas." />
@@ -50,14 +52,26 @@ export class TaskList {
   tabs: { key: TaskMode; label: string }[] = [{ key: 'all', label: 'Semua' }, { key: 'available', label: 'Tersedia' }, { key: 'mine', label: 'Tugas Saya' }];
   statuses = ADMIN_STATUSES;
   label = (s: string) => ALL_STATUS_LABEL[s];
-  q = signal(''); st = signal(''); sort = signal('new');
+  // Filter baru berlaku setelah tombol Cari ditekan (atau Enter di kotak cari): q/st/sort = yang dipakai daftar, d* = isian di layar
+  q = signal(''); st = signal('');
+  dq = signal(''); dst = signal('');
+  lk = signal(''); dlk = signal('');   // urutan suka: '' semua, 'most' terbanyak, 'least' sedikit
+  likeOptions = LIKE_ORDER_OPTIONS;
+  // Pindah tab = mulai dari awal: pencarian, status, dan urutan dikosongkan (isian di layar maupun yang dipakai daftar)
+  switchTab(key: TaskMode): void {
+    this.mode.set(key);
+    this.dq.set(''); this.dst.set(''); this.dlk.set('');
+    this.apply();
+  }
+  apply(): void { this.q.set(this.dq()); this.st.set(this.dst()); this.lk.set(this.dlk()); }
 
   list = computed(() => {
     const m = this.cur();
     const src = m === 'available' ? this.tech.available() : m === 'mine' ? this.tech.mine() : this.tech.all();
     const q = this.q().toLowerCase();
     const out = src.filter((r) => (!q || [r.id, r.title, r.room].some((x) => x.toLowerCase().includes(q))) && (!this.st() || r.status === this.st()));
-    const by = this.sort();
-    return [...out].sort((a, b) => by === 'likes' ? b.likes - a.likes : by === 'old' ? a.createdAt.localeCompare(b.createdAt) : b.createdAt.localeCompare(a.createdAt));
+    // Bawaan: terbaru dulu. Pilihan suka mengurutkan menurut jumlah suka.
+    const newest = [...out].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return byLikeOrder(newest, this.lk());
   });
 }

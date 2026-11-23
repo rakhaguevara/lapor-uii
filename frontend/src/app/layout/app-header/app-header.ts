@@ -16,7 +16,7 @@ import { Icon } from '../../shared/icon/icon';
   imports: [RouterLink, Icon, Dialog],
   template: `
     <header class="bar" [class.compact]="!loggedIn()">
-      <a class="brand" [routerLink]="loggedIn() ? '/beranda' : '/'" aria-label="UII SIRA, ke halaman utama">
+      <a class="brand" [routerLink]="loggedIn() ? home() : '/'" aria-label="UII SIRA, ke halaman utama">
         <img src="logo-uii.png" alt="" width="38" height="42">
         <span>
           <strong>UII SIRA</strong>
@@ -94,6 +94,7 @@ export class AppHeader {
 
   showLogin = input(true);
   loggedIn = this.auth.loggedIn;
+  home = this.auth.home;   // beranda sesuai peran (pelapor /beranda, Kaur /unit, dst), bukan selalu /beranda
   user = this.auth.user;
   firstName = computed(() => this.auth.user().name.split(' ')[0]);
   open = signal(false);

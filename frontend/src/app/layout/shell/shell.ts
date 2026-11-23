@@ -1,7 +1,8 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, DestroyRef, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
+import { AdminService } from '../../core/admin/admin.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { TechService } from '../../core/tech/tech.service';
 import { Icon, IconName } from '../../shared/icon/icon';
@@ -131,6 +132,16 @@ export class Shell {
 
   user = this.auth.user;
   building = inject(TechService).building;
+
+  constructor() {
+    // Admin Unit: data laporan hanya dimuat sekali saat login, jadi laporan baru dari pelapor tidak muncul.
+    // Segarkan tiap 15 detik selama tab terlihat (tanpa kerangka pemuatan ulang).
+    if (this.auth.roleCode() === 'ADMIN_UNIT') {
+      const admin = inject(AdminService);
+      const timer = setInterval(() => { if (!document.hidden) admin.loadReports().catch(() => {}); }, 15000);
+      inject(DestroyRef).onDestroy(() => clearInterval(timer));
+    }
+  }
 
   // true saat berada di halaman Portal (menu bawah disembunyikan)
   private url = toSignal(

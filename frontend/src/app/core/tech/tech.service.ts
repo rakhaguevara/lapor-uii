@@ -84,12 +84,14 @@ export class TechService {
   }
 
   // Catatan (untuk semua status) dikirim sebagai `note`, sesuai Swagger POST /reports/status.
-  async setStatus(uuid: string, ticket: string, status: TechStatus, opts: { proof?: File | null; note?: string } = {}): Promise<void> {
+  // Mengembalikan kode HTTP dan pesan dari backend, untuk ditampilkan di kartu hasil.
+  async setStatus(uuid: string, ticket: string, status: TechStatus, opts: { proof?: File | null; note?: string } = {}): Promise<{ status: number; message: string }> {
     const form = new FormData();
     form.append('status', status);
     if (opts.note) form.append('note', opts.note);
     if (opts.proof) { form.append('proof_photo', opts.proof); this.proofs.update((p) => ({ ...p, [ticket]: URL.createObjectURL(opts.proof!) })); }
-    await this.post('/api/reports/status', uuid, form);
-    await this.load(true);
+    const res = await firstValueFrom(this.http.post<{ msg?: string }>('/api/reports/status', form, { params: { uuid }, observe: 'response' }));
+    await this.load(true).catch(() => {}); // status sudah tersimpan; gagal memuat ulang tidak boleh dilaporkan sebagai gagal mengubah status
+    return { status: res.status, message: res.body?.msg ?? '' };
   }
 }
