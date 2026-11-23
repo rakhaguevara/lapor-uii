@@ -26,11 +26,21 @@ function toStatus(status: string): StatusCode {
   return 'diproses';
 }
 
+// Jumlah like: nama kolomnya bisa berbeda antar versi backend (angka, teks, atau larik pengguna).
+function likeCount(r: ApiReport): number {
+  const raw = r as unknown as Record<string, unknown>;
+  const v = raw['like_count'] ?? raw['likes_count'] ?? raw['total_likes'] ?? raw['likes'];
+  const n = Array.isArray(v) ? v.length : Number(v);
+  const count = Number.isFinite(n) ? n : 0;
+  // Kalau sudah di-like pengguna ini, jumlahnya minimal 1.
+  return r.is_liked ? Math.max(count, 1) : count;
+}
+
 function toReport(r: ApiReport): Report {
   return {
     uuid: r.uuid, id: r.ticket_no, title: r.title, building: r.building?.name ?? '', floor: r.floor, room: r.room_name,
     category: r.category?.name ?? '', description: r.description, photoUrl: r.photo_url,
-    status: toStatus(r.status), createdAt: r.created_at, likes: r.like_count, liked: r.is_liked,
+    status: toStatus(r.status), createdAt: r.created_at, likes: likeCount(r), liked: !!r.is_liked,
   };
 }
 
@@ -102,13 +112,26 @@ export class ReportService {
     }
   }
 
+  // Server bisa menjawab { data: [...] } atau berhalaman { data: { data: [...] } } (juga items/results).
+  // Apa pun bentuknya, kembalikan larik; bentuk tak dikenal = larik kosong.
+  private asList<T>(res: { data?: unknown }): T[] {
+    const d = res?.data as unknown;
+    if (Array.isArray(d)) return d as T[];
+    const inner = d as Record<string, unknown> | null;
+    for (const key of ['data', 'items', 'results', 'reports', 'rows']) {
+      if (Array.isArray(inner?.[key])) return inner![key] as T[];
+    }
+    return [];
+  }
+
   private async fetchAll(): Promise<void> {
-    const get = <T>(url: string) => firstValueFrom(this.http.get<{ data: T }>(url)).then((r) => r.data);
+    // Tiap permintaan berdiri sendiri: satu yang gagal tidak membatalkan login
+    const get = <T>(url: string) => firstValueFrom(this.http.get<{ data?: unknown }>(url)).then((r) => this.asList<T>(r)).catch(() => [] as T[]);
     const [buildings, categories, mine, all] = await Promise.all([
-      get<Item[]>('/api/locations'),
-      get<Item[]>('/api/damage-categories'),
-      get<ApiReport[]>('/api/reports/my-reports'),
-      get<ApiReport[]>('/api/reports/public'),
+      get<Item>('/api/locations'),
+      get<Item>('/api/damage-categories'),
+      get<ApiReport>('/api/reports/my-reports'),
+      get<ApiReport>('/api/reports/public'),
     ]);
     this._buildings.set(buildings);
     this._categories.set(categories);
@@ -129,13 +152,24 @@ export class ReportService {
   // Membuat laporan baru (kirim sebagai form karena ada file foto)
   async add(data: NewReport, photo: File): Promise<Report> {
     const form = new FormData();
-    form.append('title', data.title);
-    form.append('building_uuid', this._buildings().find((b) => b.name === data.building)?.uuid ?? '');
-    form.append('category_uuid', this.categoryUuidFor(data.title));
-    form.append('floor', data.floor);
-    form.append('room_name', data.room);
-    form.append('description', data.description);
-    form.append('photo', photo);
+    // Daftar gedung/kategori bisa belum termuat; muat ulang dulu supaya uuid tidak kosong (penyebab 422).
+    if (!this._buildings().length || !this._categories().length) await this.fetchAll();
+    const buildingUuid = this._buildings().find((b) => b.name === data.building)?.uuid;
+    const categoryUuid = this.categoryUuidFor(data.title);
+    if (!buildingUuid) throw new Error('Gedung tidak dikenali. Muat ulang halaman lalu pilih gedung lagi.');
+    if (!categoryUuid) throw new Error('Kategori kerusakan belum tersedia. Muat ulang halaman lalu coba lagi.');
+
+    form.append('title', data.title.trim());
+    form.append('building_uuid', buildingUuid);
+    form.append('category_uuid', categoryUuid);
+    // Lantai opsional: jangan kirim string kosong karena backend menolaknya dengan 422.
+    // Spec backend: floor berupa angka dalam teks (contoh "3"), bukan "Lantai 3".
+    const floorNo = data.floor.match(/\d+/)?.[0];
+    if (floorNo) form.append('floor', floorNo);
+    form.append('nama_kerusakan', data.title.trim());
+    form.append('room_name', data.room.trim());
+    form.append('description', data.description.trim());
+    form.append('photo', photo, photo.name);
     const res = await firstValueFrom(this.http.post<{ data: ApiReport }>('/api/reports', form));
     await this.loadAll(true);
     return toReport(res.data);
@@ -146,7 +180,20 @@ export class ReportService {
   async toggleLike(id: string): Promise<void> {
     const target = this._publicReports().find((r) => r.id === id);
     if (!target) return;
-    await firstValueFrom(this.http.post('/api/reports/like', {}, { params: { uuid: target.uuid } }));
+    // Tampilkan perubahan langsung, lalu samakan dengan data backend.
+    const flip = (r: Report): Report => (r.id === id
+      ? { ...r, liked: !r.liked, likes: Math.max(0, r.likes + (r.liked ? -1 : 1)) }
+      : r);
+    const before = { mine: this._reports(), all: this._publicReports() };
+    this._reports.update((l) => l.map(flip));
+    this._publicReports.update((l) => l.map(flip));
+    try {
+      await firstValueFrom(this.http.post('/api/reports/like', {}, { params: { uuid: target.uuid } }));
+    } catch (err) {
+      this._reports.set(before.mine);
+      this._publicReports.set(before.all);
+      throw err;
+    }
     await this.loadAll(true);
   }
 }

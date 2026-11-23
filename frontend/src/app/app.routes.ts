@@ -13,6 +13,7 @@ import { Shell } from './layout/shell/shell';
 export const routes: Routes = [
   { path: '', pathMatch: 'full', canActivate: [guestGuard], loadComponent: () => import('./pages/public/landing/landing').then((m) => m.Landing) },
   { path: 'login', loadComponent: () => import('./pages/public/login/login').then((m) => m.Login) },
+  { path: 'daftar', loadComponent: () => import('./pages/public/register/register').then((m) => m.Register) },
   {
     path: 'teknisi',
     component: Shell,

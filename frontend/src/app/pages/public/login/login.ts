@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { AdminService } from '../../../core/admin/admin.service';
 import { TechService } from '../../../core/tech/tech.service';
@@ -36,11 +36,15 @@ import { AppHeader } from '../../../layout/app-header/app-header';
           @if (invalid('password')) { <span class="error">Kata sandi wajib diisi.</span> }
         </div>
 
+        @if (registered) {
+          <p class="ok" role="status">Pendaftaran berhasil. Silakan masuk dengan akun baru Anda.</p>
+        }
         @if (failed()) {
           <p class="alert" role="alert">{{ failed() }}</p>
         }
 
         <button class="btn btn-primary" type="submit" [disabled]="busy()">{{ busy() ? 'Memproses…' : 'Masuk' }}</button>
+        <p class="switch">Belum punya akun? <a routerLink="/daftar">Daftar</a></p>
         <a class="back" routerLink="/">← Kembali ke beranda</a>
 
         @if (demo) {
@@ -63,6 +67,9 @@ import { AppHeader } from '../../../layout/app-header/app-header';
     .demo .hint { width: 100%; }
     .demo .btn { min-height: 36px; padding: 0 14px; }
     .alert { padding: 12px 16px; border-radius: var(--r-ctl); background: var(--red-bg); color: var(--red); font-size: 14px; }
+    .ok { padding: 12px 16px; border-radius: var(--r-ctl); background: var(--green-bg, #e8f5e9); color: var(--green, #1b5e20); font-size: 14px; }
+    .switch { align-self: center; font-size: 14px; }
+    .switch a { font-weight: 600; }
     .back { align-self: center; font-size: 14px; font-weight: 500; }
 
     @media (max-width: 800px) {
@@ -78,6 +85,7 @@ export class Login {
   private admin = inject(AdminService);
   private tech = inject(TechService);
   private router = inject(Router);
+  registered = inject(ActivatedRoute).snapshot.queryParamMap.has('terdaftar');
 
   form = inject(FormBuilder).nonNullable.group({
     email: ['', [Validators.required, Validators.email]],

@@ -1,7 +1,9 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { errorMessage } from '../../../core/http/api-error';
 import { PHOTO_MAX_MB, PHOTO_TYPES, SAMPLE_REPORT } from '../../../core/reports/report.model';
 import { ReportService } from '../../../core/reports/report.service';
 import { Icon } from '../../../shared/icon/icon';
@@ -334,9 +336,10 @@ export class CreateReport {
     try {
       const report = await this.service.add({ ...this.form.getRawValue(), photoUrl: '' }, this.photoFile);
       this.router.navigate(['/laporan', report.id, 'terkirim']);
-    } catch {
+    } catch (err) {
       // Isi form tetap utuh supaya pelapor tinggal mencoba lagi
-      this.sendError.set('Laporan belum terkirim. Periksa koneksi Anda lalu coba kirim lagi.');
+      const fallback = 'Laporan belum terkirim. Periksa koneksi Anda lalu coba kirim lagi.';
+      this.sendError.set(err instanceof Error && !(err instanceof HttpErrorResponse) ? err.message : errorMessage(err, fallback));
     } finally {
       this.busy.set(false);
     }

@@ -4,7 +4,10 @@ import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '../http/api-error';
 
 // Bentuk data pengguna dari backend
-interface ApiUser { uuid?: string; full_name: string; role: string; reporter_type?: string }
+interface ApiUser { uuid?: string; full_name: string; role: string; reporter_type?: string; user_type?: string; type?: string }
+
+// Jenis pelapor yang bisa dipilih saat daftar
+export const REPORTER_TYPES: Record<string, string> = { MAHASISWA: 'Mahasiswa', DOSEN: 'Dosen', STAF: 'Staf' };
 
 // Peran dari backend -> nama tampil dan halaman beranda masing-masing
 export const ROLE_LABEL: Record<string, string> = {
@@ -32,10 +35,16 @@ export class AuthService {
   readonly roleCode = computed(() => this._user()?.role ?? '');
   readonly home = computed(() => ROLE_HOME[this.roleCode()] ?? '/beranda');
   // Nama dan peran untuk ditampilkan di header
+  // Jenis pelapor (Mahasiswa, Dosen, dst). Nama kolomnya bisa berbeda antar versi backend.
+  private typeLabel = computed(() => {
+    const u = this._user();
+    const t = (u?.reporter_type ?? u?.user_type ?? u?.type ?? '').trim();
+    return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+  });
   readonly user = computed(() => ({
     name: this._user()?.full_name ?? '',
     role: ROLE_LABEL[this._user()?.role ?? ''] ?? (this._user()?.role ?? ''),
-    type: (this._user()?.reporter_type ?? '').charAt(0) + (this._user()?.reporter_type ?? '').slice(1).toLowerCase(),
+    type: this.typeLabel(),
   }));
 
   constructor(private http: HttpClient) {}
@@ -54,6 +63,19 @@ export class AuthService {
       if (err instanceof HttpErrorResponse && err.status === 401) return 'Email atau kata sandi tidak sesuai. Periksa lagi lalu coba masuk kembali.';
       if (err instanceof HttpErrorResponse && err.status === 403) return 'Akun kamu dinonaktifkan. Hubungi admin untuk mengaktifkannya kembali.';
       return errorMessage(err, 'Login belum berhasil. Coba lagi.');
+    }
+  }
+
+  // Daftar akun pelapor (POST /api/auth/register). Mengembalikan null jika berhasil, atau pesan kegagalan.
+  async register(d: { name: string; email: string; password: string; type: string }): Promise<string | null> {
+    try {
+      await firstValueFrom(this.http.post('/api/auth/register', {
+        full_name: d.name, email: d.email, password: d.password, reporter_type: d.type,
+      }));
+      return null;
+    } catch (err) {
+      if (err instanceof HttpErrorResponse && err.status === 409) return 'Email ini sudah terdaftar. Silakan masuk.';
+      return errorMessage(err, 'Pendaftaran belum berhasil. Periksa isian lalu coba lagi.');
     }
   }
 

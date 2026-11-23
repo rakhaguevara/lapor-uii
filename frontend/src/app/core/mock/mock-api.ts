@@ -13,7 +13,7 @@ import { delay, of, throwError } from 'rxjs';
     admin@uii.ac.id      admin123     Admin Unit
     adminuniv@uii.ac.id  univ12345    Admin Universitas
 */
-export const DEMO = true;
+export const DEMO = false;
 
 const ok = (data: unknown, status = 200) => ({ status, msg: 'OK', data });
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -91,6 +91,12 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
   if (path === '/auth/login' && m === 'POST') {
     const u = users.find((x) => x.email === body.email && x.password === body.password && x.is_active);
     return u ? reply({ token: 'demo-' + u.uuid, user: userShape(u) }) : fail(401, 'Email atau kata sandi salah');
+  }
+  if (path === '/auth/register' && m === 'POST') {
+    if (users.some((x) => x.email === body.email)) return fail(409, 'Email sudah terdaftar');
+    const u = { uuid: 'u-' + Date.now(), full_name: body.full_name, email: body.email, password: body.password, role: 'PELAPOR', reporter_type: body.reporter_type, is_active: true, building_uuids: [] };
+    users.push(u);
+    return reply(userShape(u), 201);
   }
   if (!me) return fail(401, 'Tidak terotentikasi');
   if (path === '/auth/logout') return reply(null);
