@@ -123,9 +123,10 @@ export class Login {
     this.form.reset();
     this.submitted.set(false);
     if (!loginError) {
-      // ambil data dari backend sebelum masuk portal (pelapor dan petugas butuh data berbeda)
+      // Masuk portal langsung; data dimuat di latar (halaman menampilkan kerangka lewat flag `loaded`).
+      // Menunggu semua halaman laporan di sini membuat hero portal muncul sangat lambat (LCP).
       const role = this.auth.roleCode();
-      await (role === 'PELAPOR' ? this.reports.loadAll() : role === 'TEKNISI' ? this.tech.load() : this.admin.load(role));
+      void (role === 'PELAPOR' ? this.reports.loadAll() : role === 'TEKNISI' ? this.tech.load() : this.admin.load(role));
       this.router.navigate(['/portal']);
     } else {
       this.failed.set(loginError);
