@@ -17,7 +17,7 @@ import { ReportTable } from '../../../shared/report-table/report-table';
   template: `
     <app-page-head
       [title]="'Halo, ' + firstName"
-      subtitle="Terima kasih telah menjaga fasilitas kampus bersama kami."
+      subtitle="Terima kasih telah menjaga fasilitas kampus bersama uii."
       [crumbs]="[{ label: 'Portal Pelapor', link: '/portal' }]">
       <a class="btn btn-primary d-only" routerLink="/laporan/baru"><app-icon name="plus" [size]="18" [stroke]="2.2" /> Buat laporan</a>
     </app-page-head>

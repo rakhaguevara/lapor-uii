@@ -33,7 +33,7 @@ const bar = (n: number, max: number) => (max ? Math.max(4, Math.round((n / max) 
         </section>
         <section class="card panel">
           <h2>Status penanganan</h2>
-          <div class="mt-4">
+          <div class="rows">
             @for (r of s().status; track r.label) {
               <div class="hbar" [class.ok]="r.ok"><span>{{ r.label }}</span><em [style.--w]="r.w"></em><b>{{ r.n }}</b></div>
             }
@@ -45,7 +45,7 @@ const bar = (n: number, max: number) => (max ? Math.max(4, Math.round((n / max) 
         <div class="split wide">
           <section class="card panel">
             <h2>Laporan per kategori</h2>
-            <div class="mt-4">
+            <div class="rows">
               @for (c of s().cats; track c.label) {
                 <div class="hbar lg"><span>{{ c.label }}</span><em [style.--w]="c.w"></em><b>{{ c.n }}</b></div>
               } @empty { <p class="empty">Belum ada laporan.</p> }
@@ -62,6 +62,9 @@ const bar = (n: number, max: number) => (max ? Math.max(4, Math.round((n / max) 
         </div>
       }
     </div>
+  `,
+  styles: `
+    .rows { margin-top: 16px; }
   `,
 })
 export class Insight {
