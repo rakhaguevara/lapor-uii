@@ -26,6 +26,35 @@ function toStatus(status: string): StatusCode {
   return 'diproses';
 }
 
+// Perkecil foto sebelum dikirim: sisi terpanjang maksimal 1600 px, JPEG, target di bawah ~1 MB.
+// Server menolak file besar dengan 422 "The photo failed to upload." (batas upload PHP/Vercel).
+async function shrinkPhoto(file: File): Promise<File> {
+  const LIMIT = 1024 * 1024;
+  if (file.size <= LIMIT && file.type === 'image/jpeg') return file;
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bmp.width * scale);
+    canvas.height = Math.round(bmp.height * scale);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.fillStyle = '#fff'; // PNG transparan -> latar putih agar tidak jadi hitam di JPEG
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    bmp.close();
+    let blob: Blob | null = null;
+    for (const q of [0.85, 0.7, 0.55, 0.4]) {
+      blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', q));
+      if (blob && blob.size <= LIMIT) break;
+    }
+    if (!blob) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+  } catch {
+    return file; // gagal diperkecil: kirim aslinya
+  }
+}
+
 // Jumlah like: nama kolomnya bisa berbeda antar versi backend (angka, teks, atau larik pengguna).
 function likeCount(r: ApiReport): number {
   const raw = r as unknown as Record<string, unknown>;
@@ -169,7 +198,8 @@ export class ReportService {
     form.append('nama_kerusakan', data.title.trim());
     form.append('room_name', data.room.trim());
     form.append('description', data.description.trim());
-    form.append('photo', photo, photo.name);
+    const small = await shrinkPhoto(photo);
+    form.append('photo', small, small.name);
     const res = await firstValueFrom(this.http.post<{ data: ApiReport }>('/api/reports', form));
     await this.loadAll(true);
     return toReport(res.data);
