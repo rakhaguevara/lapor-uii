@@ -89,14 +89,6 @@ const WINDOW_DAYS = 30;  // halaman pertama laporan publik
         }
       </div>
 
-      @if (!isPublic) {
-        <!-- Aksi edit/hapus belum tersedia di backend: tampil sesuai desain tetapi nonaktif -->
-        <div class="row-actions">
-          <button type="button" disabled aria-label="Edit laporan (belum tersedia)" title="Edit laporan belum tersedia"><app-icon name="edit" [size]="22" /></button>
-          <button type="button" disabled aria-label="Hapus laporan (belum tersedia)" title="Hapus laporan belum tersedia"><app-icon name="trash" [size]="22" /></button>
-        </div>
-      }
-
       @if (likeError()) { <p class="alert" role="alert">Suka belum tersimpan. Coba lagi sebentar lagi.</p> }
 
       <app-report-table

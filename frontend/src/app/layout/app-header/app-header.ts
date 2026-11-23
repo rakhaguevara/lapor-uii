@@ -1,6 +1,8 @@
 import { Component, ElementRef, HostListener, computed, inject, input, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { ToastService } from '../../core/ui/toast.service';
+import { Dialog } from '../../shared/dialog/dialog';
 import { Icon } from '../../shared/icon/icon';
 
 /*
@@ -11,7 +13,7 @@ import { Icon } from '../../shared/icon/icon';
 */
 @Component({
   selector: 'app-header',
-  imports: [RouterLink, Icon],
+  imports: [RouterLink, Icon, Dialog],
   template: `
     <header class="bar" [class.compact]="!loggedIn()">
       <a class="brand" [routerLink]="loggedIn() ? '/beranda' : '/'" aria-label="UII SIRA, ke halaman utama">
@@ -34,7 +36,7 @@ import { Icon } from '../../shared/icon/icon';
           </button>
           @if (open()) {
             <div class="dropdown" role="menu">
-              <button type="button" role="menuitem" (click)="logout()">Keluar</button>
+              <button type="button" role="menuitem" (click)="askLogout()">Keluar</button>
             </div>
           }
         </div>
@@ -42,6 +44,11 @@ import { Icon } from '../../shared/icon/icon';
         <a class="pill login" routerLink="/login">Masuk <app-icon name="chevron" [size]="16" [stroke]="2.4" class="rot" /></a>
       }
     </header>
+
+    @if (confirming()) {
+      <app-dialog title="Keluar dari akun?" message="Anda perlu masuk lagi untuk membuat dan memantau laporan."
+        confirmLabel="Ya, keluar" (confirm)="logout()" (cancel)="confirming.set(false)" />
+    }
   `,
   styles: `
     :host { display: block; position: sticky; top: 0; z-index: 20; }
@@ -83,6 +90,7 @@ export class AppHeader {
   private auth = inject(AuthService);
   private router = inject(Router);
   private host = inject(ElementRef<HTMLElement>);
+  private toast = inject(ToastService);
 
   showLogin = input(true);
   loggedIn = this.auth.loggedIn;
@@ -98,9 +106,18 @@ export class AppHeader {
   @HostListener('document:keydown.escape')
   onEsc(): void { this.open.set(false); }
 
-  logout(): void {
+  confirming = signal(false);
+
+  // Tombol "Keluar" di menu hanya membuka pop-up konfirmasi; keluar sebenarnya di logout()
+  askLogout(): void {
     this.open.set(false);
+    this.confirming.set(true);
+  }
+
+  logout(): void {
+    this.confirming.set(false);
     this.auth.logout();
+    this.toast.show('Anda telah keluar dari akun.');
     this.router.navigate(['/']);
   }
 }

@@ -6,7 +6,11 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { Report, STEP_REACHED, byPublicOrder, StatusCode, TIMELINE_STEPS } from '../../../core/reports/report.model';
 import { ReportService } from '../../../core/reports/report.service';
+import { errorMessage } from '../../../core/http/api-error';
+import { ToastService } from '../../../core/ui/toast.service';
+import { Dialog } from '../../../shared/dialog/dialog';
 import { Icon } from '../../../shared/icon/icon';
+import { EditReportDialog } from './edit-report-dialog';
 import { PageHead } from '../../../shared/page-head/page-head';
 import { StatusBadge } from '../../../shared/status-badge/status-badge';
 
@@ -18,7 +22,7 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
 */
 @Component({
   selector: 'app-report-detail',
-  imports: [RouterLink, DatePipe, Icon, PageHead, StatusBadge],
+  imports: [RouterLink, DatePipe, Icon, PageHead, StatusBadge, Dialog, EditReportDialog],
   template: `
     <a class="btn back m-only" [routerLink]="back().link"><app-icon name="left" [size]="16" [stroke]="2.2" /> {{ back().label }}</a>
 
@@ -61,6 +65,17 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
           </div>
           <p class="reported">Dilaporkan pada {{ r.createdAt | date: "d MMMM y, HH.mm 'WIB'" }}</p>
           <p class="likes d-only"><app-icon name="thumb" [size]="22" /> {{ r.likes }}</p>
+
+          @if (isMine()) {
+            <!-- Edit dan hapus hanya untuk pemilik, selama laporan masih berstatus Dikirim (belum ditugaskan) -->
+            <div class="owner">
+              <div class="owner-btns">
+                <button class="btn" type="button" [disabled]="!editable()" (click)="editing.set(true)"><app-icon name="edit" [size]="18" /> Edit</button>
+                <button class="btn btn-danger-soft" type="button" [disabled]="!editable()" (click)="deleting.set(true)"><app-icon name="trash" [size]="18" /> Hapus</button>
+              </div>
+              @if (!editable()) { <small>Laporan yang sudah diproses petugas tidak dapat diubah atau dihapus.</small> }
+            </div>
+          }
 
           @if (neighbours(); as n) {
             <!-- Pindah ke laporan lain pada daftar asal tanpa kembali ke daftar -->
@@ -130,8 +145,21 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
         <a [routerLink]="back().link">Kembali ke {{ back().label }}</a>
       </p>
     }
+
+    @if (editing() && report(); as r) {
+      <app-edit-report-dialog [report]="r" (saved)="onSaved()" (closed)="editing.set(false)" />
+    }
+    @if (deleting() && report(); as r) {
+      <app-dialog title="Hapus laporan ini?" confirmLabel="Ya, hapus" busyLabel="Menghapus…" [danger]="true"
+        [message]="'Laporan ' + r.id + ' (' + r.title + ') akan dihapus. Tindakan ini tidak dapat dibatalkan.'"
+        [busy]="deleteBusy()" [error]="deleteError()" (confirm)="confirmDelete()" (cancel)="closeDelete()" />
+    }
   `,
   styles: `
+    .owner { order: 9; display: flex; flex-direction: column; gap: 8px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+    .owner-btns { display: flex; gap: 12px; }
+    .owner-btns .btn { padding: 0 24px; }
+    .owner small { color: var(--muted); font-size: 12px; }
     .layout { display: grid; grid-template-columns: 1fr 383px; gap: 24px; align-items: start; }
     aside { display: grid; gap: 24px; }
     .main { display: flex; flex-direction: column; }
@@ -184,6 +212,7 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
       .ticket { font-size: 13px; }
       .reported { margin-top: 16px; font-size: 11px; }
       .pager .btn { flex: 1; padding: 0 8px; }
+      .owner-btns .btn { flex: 1; padding: 0 12px; }
       .pager .pos { order: -1; width: 100%; }
       .pager { flex-wrap: wrap; }
       .timeline { margin-top: 20px; }
@@ -289,4 +318,48 @@ export class ReportDetail {
   }
 
   reached = (status: StatusCode) => STEP_REACHED[status];
+
+  // ---------- Edit dan hapus (hanya pemilik, hanya selama status Dikirim) ----------
+  private toast = inject(ToastService);
+  editing = signal(false);
+  deleting = signal(false);
+  deleteBusy = signal(false);
+  deleteError = signal('');
+
+  // Pemilik = laporan ini ada di daftar "laporan saya"
+  isMine = computed(() => {
+    const id = this.report()?.id;
+    return !!id && this.service.reports().some((x) => x.id === id);
+  });
+  editable = computed(() => this.report()?.status === 'dikirim');
+
+  onSaved(): void {
+    this.editing.set(false);
+    const r = this.report();
+    if (!r) return;
+    this.toast.show(`Laporan ${r.id} berhasil diperbarui.`);
+    void this.service.find(r.id).then((fresh) => { if (fresh && fresh.id === this.id()) this.report.set(fresh); });
+  }
+
+  closeDelete(): void {
+    this.deleting.set(false);
+    this.deleteError.set('');
+  }
+
+  async confirmDelete(): Promise<void> {
+    const r = this.report();
+    if (!r || this.deleteBusy()) return;
+    this.deleteBusy.set(true);
+    this.deleteError.set('');
+    try {
+      await this.service.remove(r);
+      this.deleting.set(false);
+      this.toast.show(`Laporan ${r.id} berhasil dihapus.`);
+      void this.router.navigate([this.back().link], { replaceUrl: true });
+    } catch (err) {
+      this.deleteError.set(errorMessage(err, 'Laporan belum terhapus. Periksa koneksi Anda lalu coba lagi.'));
+    } finally {
+      this.deleteBusy.set(false);
+    }
+  }
 }

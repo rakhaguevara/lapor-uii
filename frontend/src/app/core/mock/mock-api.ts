@@ -124,6 +124,16 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
     reports.unshift(r);
     return reply(shape(r, me), 201);
   }
+  // Edit / hapus: hanya pemilik, dan hanya selama belum ditugaskan atau diambil teknisi
+  if (path === '/reports' && (m === 'PUT' || m === 'DELETE')) {
+    const r = report();
+    if (!r) return fail(404, 'Laporan tidak ditemukan');
+    if (r.reporter_uuid !== me.uuid) return fail(403, 'Hanya pemilik laporan yang dapat mengubah atau menghapusnya');
+    if (!isPlain(r)) return fail(409, 'Laporan sudah diproses petugas, tidak dapat diubah atau dihapus');
+    if (m === 'DELETE') { reports.splice(reports.indexOf(r), 1); return reply(null); }
+    Object.assign(r, { title: body.title, building_uuid: body.building_uuid, category_uuid: body.category_uuid, floor: body.floor ?? '', room_name: body.room_name, description: body.description });
+    return reply(shape(r, me));
+  }
   if (path === '/reports/like') {
     const r = report(); if (!r) return fail(404, 'Laporan tidak ditemukan');
     if (r.status === 'SELESAI') return fail(400, 'Laporan selesai tidak bisa di-like');
