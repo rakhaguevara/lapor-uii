@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AdminReport, rows, toAdminReport } from '../admin/admin.service';
+import { allPages } from '../http/all-pages';
 import { AuthService } from '../auth/auth.service';
 
 /*
@@ -53,7 +54,7 @@ export class TechService {
   }
 
   private async fetchTasks(): Promise<void> {
-    const tab = (t: string) => firstValueFrom(this.http.get<unknown>('/api/reports/tasks', { params: { tab: t, per_page: '15' } })).then((r) => rows(r).map(toAdminReport));
+    const tab = (t: string) => allPages(this.http, '/api/reports/tasks', { tab: t }).then((r) => r.map(toAdminReport));
     const [a, m] = await Promise.all([tab('available'), tab('mine')]);
     this.available.set(a);
     this.mine.set(m);

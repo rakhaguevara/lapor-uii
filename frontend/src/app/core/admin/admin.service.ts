@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { Report } from '../reports/report.model';
+import { allPages } from '../http/all-pages';
 import { reportPhoto } from '../reports/photo-url';
 
 /*
@@ -90,7 +91,7 @@ export class AdminService {
   // ---------- Muat data ----------
   async loadReports(): Promise<void> {
     try {
-      this.reports.set(rows(await this.get('/api/reports', { per_page: '100' })).map(toAdminReport));
+      this.reports.set((await allPages(this.http, '/api/reports', { per_page: '100' })).map(toAdminReport));
     } finally {
       this.reportsLoaded.set(true);
     }
@@ -108,7 +109,7 @@ export class AdminService {
 
   async loadAccounts(): Promise<void> {
     try {
-      this.accounts.set(rows(await this.get('/api/admin/users')).map((u) => {
+      this.accounts.set((await allPages(this.http, '/api/admin/users')).map((u) => {
         const bs: Raw[] = u['buildings'] ?? u['building_scopes'] ?? u['scopes'] ?? [];
         return {
           id: u['uuid'], name: u['full_name'], email: u['email'], role: u['role'], active: u['is_active'] !== false,

@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
+import { allPages } from '../http/all-pages';
 import { reportPhoto } from './photo-url';
 import { CATEGORY_KEYWORDS, DEFAULT_CATEGORY, NewReport, Report, StatusCode } from './report.model';
 
@@ -160,8 +161,8 @@ export class ReportService {
     const [buildings, categories, mine, all] = await Promise.all([
       get<Item>('/api/locations'),
       get<Item>('/api/damage-categories'),
-      get<ApiReport>('/api/reports/my-reports'),
-      get<ApiReport>('/api/reports/public'),
+      allPages<ApiReport>(this.http, '/api/reports/my-reports').catch(() => [] as ApiReport[]),
+      allPages<ApiReport>(this.http, '/api/reports/public').catch(() => [] as ApiReport[]),
     ]);
     this._buildings.set(buildings);
     this._categories.set(categories);
