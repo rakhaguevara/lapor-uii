@@ -74,7 +74,7 @@ export class AuthService {
       }));
       return null;
     } catch (err) {
-      if (err instanceof HttpErrorResponse && err.status === 409) return 'Email ini sudah terdaftar. Silakan masuk.';
+      if (err instanceof HttpErrorResponse && (err.status === 409 || (err.status === 422 && err.error?.errors?.email))) return 'Email ini sudah terdaftar. Silakan masuk.';
       return errorMessage(err, 'Pendaftaran belum berhasil. Periksa isian lalu coba lagi.');
     }
   }
