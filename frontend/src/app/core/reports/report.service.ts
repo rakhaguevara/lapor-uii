@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
+import { photoSrc } from './photo-url';
 import { CATEGORY_KEYWORDS, DEFAULT_CATEGORY, NewReport, Report, StatusCode } from './report.model';
 
 // Isi form yang disimpan sementara, supaya tidak hilang saat pelapor membuka preview foto lalu kembali.
@@ -68,7 +69,7 @@ function likeCount(r: ApiReport): number {
 function toReport(r: ApiReport): Report {
   return {
     uuid: r.uuid, id: r.ticket_no, title: r.title, building: r.building?.name ?? '', floor: r.floor, room: r.room_name,
-    category: r.category?.name ?? '', description: r.description, photoUrl: r.photo_url,
+    category: r.category?.name ?? '', description: r.description, photoUrl: photoSrc(r.photo_url),
     status: toStatus(r.status), createdAt: r.created_at, likes: likeCount(r), liked: !!r.is_liked,
   };
 }

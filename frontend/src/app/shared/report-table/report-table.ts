@@ -53,6 +53,9 @@ import { StatusBadge } from '../status-badge/status-badge';
           <span class="state">
             <app-status-badge [status]="r.status" />
             @if (showLike() && likeable()) {
+              <a class="detail-btn m-only" [routerLink]="[base(), r.id]" [queryParams]="from() ? { dari: from() } : null">
+                <app-icon name="search" [size]="18" /> Lihat detail laporan
+              </a>
               <button class="like" type="button"
                 [class.on]="r.liked"
                 [disabled]="r.status === 'selesai'"
@@ -105,6 +108,7 @@ import { StatusBadge } from '../status-badge/status-badge';
     .like.on { color: var(--blue-900); font-weight: 600; }
     .like:disabled { opacity: 0.55; cursor: default; }
     .name:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 4px; border-radius: 4px; }
+    .detail-btn:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 2px; }
     .more { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
 
     /* Petunjuk bagian yang bisa diklik: hanya di perangkat dengan kursor */
@@ -128,6 +132,7 @@ import { StatusBadge } from '../status-badge/status-badge';
       .state .like:not(.static) { width: 100%; min-height: 44px; margin-left: 0; padding: 0 16px; gap: 8px; border: 1px solid var(--blue-600); background: var(--white); color: var(--blue-600); font-size: 14px; font-weight: 600; }
       .state .like.on { background: var(--blue-600); color: var(--white); }
       .state .like:disabled { border-color: var(--line); color: var(--muted); background: var(--bg); }
+      .detail-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; border-radius: 8px; background: var(--blue-600); color: var(--white); font-size: 14px; font-weight: 600; }
       .like-note { display: block; width: 100%; margin-top: -2px; color: var(--muted); font-size: 11px; line-height: 1.4; text-align: center; }
       .more { margin-top: 14px; font-size: 12.5px; }
     }
