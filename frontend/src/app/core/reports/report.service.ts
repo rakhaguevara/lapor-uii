@@ -68,7 +68,7 @@ function likeCount(r: ApiReport): number {
 
 function toReport(r: ApiReport): Report {
   return {
-    uuid: r.uuid, id: r.ticket_no, title: r.title, building: r.building?.name ?? '', floor: r.floor, room: r.room_name,
+    uuid: r.uuid, id: r.ticket_no, title: r.title || r.category?.name || 'Laporan kerusakan', building: r.building?.name ?? '', floor: r.floor, room: r.room_name,
     category: r.category?.name ?? '', description: r.description, photoUrl: reportPhoto(r),
     status: toStatus(r.status), createdAt: r.created_at, likes: likeCount(r), liked: !!r.is_liked,
   };

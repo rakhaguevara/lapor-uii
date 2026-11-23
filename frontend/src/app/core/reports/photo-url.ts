@@ -30,3 +30,11 @@ export function reportPhoto(r: any): string {
   const fromFile = p?.file_path ? '/storage/' + String(p.file_path).replace(/^\/+/, '') : '';
   return photoSrc(p?.photo_url || fromFile || r?.photo_url);
 }
+
+// Foto gagal dimuat (file hilang di server): ganti dengan gambar pengganti supaya tidak tampil ikon rusak.
+const MISSING = "data:image/svg+xml;utf8," + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="360"><rect width="100%" height="100%" fill="#f1f3f9"/><text x="50%" y="50%" fill="#6b7280" font-family="sans-serif" font-size="20" text-anchor="middle">Foto tidak dapat dimuat</text></svg>');
+export function onPhotoError(ev: Event): void {
+  const img = ev.target as HTMLImageElement;
+  if (img.src !== MISSING) img.src = MISSING;
+}

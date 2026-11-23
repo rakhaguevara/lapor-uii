@@ -1,3 +1,4 @@
+import { onPhotoError } from '../../../core/reports/photo-url';
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -26,7 +27,7 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
           <div class="top"><span class="ticket">{{ r.id }}</span><app-status-badge [status]="r.status" /></div>
           <h2>{{ r.title }}</h2>
           <p class="sub">{{ r.building }}{{ r.floor ? ' · ' + r.floor : '' }} · {{ r.room }}</p>
-          @if (r.photoUrl) { <img class="photo" [src]="r.photoUrl" [alt]="'Foto kerusakan: ' + r.title"> }
+          @if (r.photoUrl) { <img class="photo" (error)="onPhotoError($event)" [src]="r.photoUrl" [alt]="'Foto kerusakan: ' + r.title"> }
           <h3>Deskripsi kerusakan</h3>
           <p>{{ r.description }}</p>
           <div class="meta">
@@ -75,6 +76,7 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
   `,
 })
 export class UnitDetail {
+  readonly onPhotoError = onPhotoError;
   private admin = inject(AdminService);
   private route = inject(ActivatedRoute);
   private id = toSignal(this.route.paramMap.pipe(map((p) => p.get('id') ?? '')), { initialValue: '' });

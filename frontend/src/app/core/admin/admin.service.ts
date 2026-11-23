@@ -57,7 +57,7 @@ export function toAdminReport(r: Raw): AdminReport {
   const t = r['technician'] ?? r['assigned_technician'] ?? r['assignment']?.technician ?? null;
   const name: string = t?.full_name ?? t?.name ?? r['technician_name'] ?? '';
   return {
-    uuid: r['uuid'], id: r['ticket_no'], title: r['title'] ?? '', building: r['building']?.name ?? '', buildingUuid: r['building']?.uuid ?? '',
+    uuid: r['uuid'], id: r['ticket_no'], title: r['title'] || r['category']?.name || 'Laporan kerusakan', building: r['building']?.name ?? '', buildingUuid: r['building']?.uuid ?? '',
     floor: r['floor'] ?? '', room: r['room_name'] ?? '', category: r['category']?.name ?? '', description: r['description'] ?? '',
     photoUrl: reportPhoto(r), status: toAdminStatus(r['status'], !!name), createdAt: r['created_at'],
     likes: r['like_count'] ?? 0, liked: !!r['is_liked'], priority: r['priority'] ?? 'NORMAL',

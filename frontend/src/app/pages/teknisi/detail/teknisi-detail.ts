@@ -1,3 +1,4 @@
+import { onPhotoError } from '../../../core/reports/photo-url';
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -37,7 +38,7 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
           <h2>{{ r.title }}</h2>
           <p class="sub">{{ r.building }}{{ r.floor ? ' · ' + r.floor : '' }} · {{ r.room }}</p>
           @if (proof() || r.photoUrl) {
-            <img class="photo" [src]="proof() || r.photoUrl" [alt]="proof() ? 'Bukti penanganan' : 'Foto kerusakan: ' + r.title">
+            <img class="photo" (error)="onPhotoError($event)" [src]="proof() || r.photoUrl" [alt]="proof() ? 'Bukti penanganan' : 'Foto kerusakan: ' + r.title">
             <p class="cap">{{ caption() }}</p>
           }
           <h3>Deskripsi kerusakan</h3>
@@ -108,6 +109,7 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
   `,
 })
 export class TeknisiDetail {
+  readonly onPhotoError = onPhotoError;
   private tech = inject(TechService);
   private auth = inject(AuthService);
   private router = inject(Router);

@@ -1,3 +1,4 @@
+import { onPhotoError } from '../../../core/reports/photo-url';
 import { DatePipe } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -47,7 +48,7 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
           </p>
 
           @if (r.photoUrl) {
-            <img class="photo" [src]="r.photoUrl" [alt]="'Foto kerusakan: ' + r.title">
+            <img class="photo" (error)="onPhotoError($event)" [src]="r.photoUrl" [alt]="'Foto kerusakan: ' + r.title">
           } @else {
             <div class="photo no-photo">Belum ada foto</div>
           }
@@ -190,6 +191,7 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
   `,
 })
 export class ReportDetail {
+  readonly onPhotoError = onPhotoError;
   private service = inject(ReportService);
   private route = inject(ActivatedRoute);
   steps = TIMELINE_STEPS;
