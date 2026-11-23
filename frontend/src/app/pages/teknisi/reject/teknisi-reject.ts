@@ -19,7 +19,7 @@ import { PageHead } from '../../../shared/page-head/page-head';
         <p class="sub">{{ r.id }} · {{ r.title }}</p>
 
         <div class="field" [class.invalid]="submitted() && !reason().trim()">
-          <label for="reason">Alasan penolakan *</label>
+          <label for="reason">Alasan penolakan <span class="req" aria-hidden="true">*</span></label>
           <textarea id="reason" rows="4" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea>
           @if (submitted() && !reason().trim()) { <span class="error" role="alert">Alasan wajib diisi.</span> }
         </div>

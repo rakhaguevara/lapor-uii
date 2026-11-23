@@ -19,26 +19,26 @@ import { errorMessage } from '../../../core/http/api-error';
       <p class="hint" style="margin-top: 14px">* Wajib diisi</p>
       <div class="fields">
         <div class="field" [class.invalid]="bad('name')">
-          <label for="name">Nama lengkap *</label>
+          <label for="name">Nama lengkap <span class="req" aria-hidden="true">*</span></label>
           <input id="name" formControlName="name" placeholder="Rina Handayani" [attr.aria-invalid]="bad('name')">
           @if (bad('name')) { <span class="error" role="alert">Nama lengkap wajib diisi.</span> }
         </div>
         <div class="field" [class.invalid]="bad('email')">
-          <label for="email">Email universitas *</label>
+          <label for="email">Email universitas <span class="req" aria-hidden="true">*</span></label>
           <input id="email" type="email" formControlName="email" placeholder="nama@uii.ac.id" [attr.aria-invalid]="bad('email')">
           @if (bad('email')) { <span class="error" role="alert">Masukkan email yang valid.</span> }
         </div>
         <div class="field" [class.invalid]="bad('password')">
-          <label for="password">Kata sandi awal {{ id ? '(kosongkan bila tidak diubah)' : '*' }}</label>
+          <label for="password">Kata sandi awal @if (id) { (kosongkan bila tidak diubah) } @else { <span class="req" aria-hidden="true">*</span> }</label>
           <input id="password" type="password" formControlName="password" autocomplete="new-password" [attr.aria-invalid]="bad('password')">
           @if (bad('password')) { <span class="error" role="alert">Kata sandi awal minimal 8 karakter.</span> }
         </div>
         <div class="field">
-          <label for="role">Role *</label>
+          <label for="role">Role <span class="req" aria-hidden="true">*</span></label>
           <select id="role" formControlName="role">@for (r of roles; track r[0]) { <option [value]="r[0]">{{ r[1] }}</option> }</select>
         </div>
         <div class="field">
-          <label for="scope">Cakupan gedung *</label>
+          <label for="scope">Cakupan gedung <span class="req" aria-hidden="true">*</span></label>
           <select id="scope" formControlName="scope">
             <option value="">Semua gedung</option>
             @for (b of buildings(); track b.id) { <option [value]="b.id">{{ b.name }}</option> }

@@ -7,6 +7,7 @@ import { TechService } from '../../../core/tech/tech.service';
 import { ReportService } from '../../../core/reports/report.service';
 import { DEMO } from '../../../core/mock/mock-api';
 import { AppHeader } from '../../../layout/app-header/app-header';
+import { Icon } from '../../../shared/icon/icon';
 
 /*
   HALAMAN LOGIN
@@ -16,7 +17,7 @@ import { AppHeader } from '../../../layout/app-header/app-header';
 */
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, AppHeader],
+  imports: [ReactiveFormsModule, RouterLink, AppHeader, Icon],
   template: `
     <app-header [showLogin]="false" />
     <main class="wrap">
@@ -32,8 +33,14 @@ import { AppHeader } from '../../../layout/app-header/app-header';
 
         <div class="field" [class.invalid]="invalid('password')">
           <label for="password">Kata sandi</label>
-          <input id="password" type="password" formControlName="password" autocomplete="current-password" [attr.aria-invalid]="invalid('password')">
+          <div class="pw">
+            <input id="password" [type]="showPw() ? 'text' : 'password'" formControlName="password" autocomplete="current-password" [attr.aria-invalid]="invalid('password')">
+            <button class="eye" type="button" [attr.aria-label]="showPw() ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'" [attr.aria-pressed]="showPw()" (click)="showPw.set(!showPw())">
+              <app-icon [name]="showPw() ? 'eyeOff' : 'eye'" [size]="20" />
+            </button>
+          </div>
           @if (invalid('password')) { <span class="error">Kata sandi wajib diisi.</span> }
+          <a class="forgot" routerLink="/lupa-sandi">Lupa kata sandi?</a>
         </div>
 
         @if (registered) {
@@ -63,6 +70,11 @@ import { AppHeader } from '../../../layout/app-header/app-header';
     form { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 440px; padding: 32px; }
     h1 { font-size: 28px; line-height: 1.3; font-weight: 600; }
     .sub { margin-top: -12px; font-size: 15px; }
+    .pw { position: relative; }
+    .field .pw input { padding-right: 48px; }
+    .eye { position: absolute; top: 0; right: 0; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: var(--r-ctl); background: none; color: var(--muted); cursor: pointer; }
+    .eye:hover { color: var(--blue-600); }
+    .forgot { align-self: flex-end; font-size: 13px; font-weight: 500; }
     .demo { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 16px; border-top: 1px solid var(--line); }
     .demo .hint { width: 100%; }
     .demo .btn { min-height: 36px; padding: 0 14px; }
@@ -105,6 +117,7 @@ export class Login {
   submitted = signal(false);
   failed = signal('');
   busy = signal(false);
+  showPw = signal(false);   // true = kata sandi terlihat (ikon mata)
 
   invalid(name: 'email' | 'password'): boolean {
     const control = this.form.controls[name];
@@ -122,12 +135,13 @@ export class Login {
     // Kosongkan isian setelah percobaan masuk, benar atau salah
     this.form.reset();
     this.submitted.set(false);
+    this.showPw.set(false);
     if (!loginError) {
       // Masuk portal langsung; data dimuat di latar (halaman menampilkan kerangka lewat flag `loaded`).
       // Menunggu semua halaman laporan di sini membuat hero portal muncul sangat lambat (LCP).
       const role = this.auth.roleCode();
       void (role === 'PELAPOR' ? this.reports.loadAll() : role === 'TEKNISI' ? this.tech.load() : this.admin.load(role));
-      this.router.navigate(['/portal']);
+      this.router.navigate(['/portal'], { replaceUrl: true });  // replaceUrl: tombol Kembali tidak membawa ke halaman login lagi
     } else {
       this.failed.set(loginError);
     }

@@ -9,8 +9,8 @@ import { ReportService } from '../../../core/reports/report.service';
 import { errorMessage } from '../../../core/http/api-error';
 import { ToastService } from '../../../core/ui/toast.service';
 import { Dialog } from '../../../shared/dialog/dialog';
+import { UnlikeDialog } from '../../../shared/unlike-dialog/unlike-dialog';
 import { Icon } from '../../../shared/icon/icon';
-import { EditReportDialog } from './edit-report-dialog';
 import { PageHead } from '../../../shared/page-head/page-head';
 import { StatusBadge } from '../../../shared/status-badge/status-badge';
 
@@ -22,7 +22,7 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
 */
 @Component({
   selector: 'app-report-detail',
-  imports: [RouterLink, DatePipe, Icon, PageHead, StatusBadge, Dialog, EditReportDialog],
+  imports: [RouterLink, DatePipe, Icon, PageHead, StatusBadge, Dialog, UnlikeDialog],
   template: `
     <a class="btn back m-only" [routerLink]="back().link"><app-icon name="left" [size]="16" [stroke]="2.2" /> {{ back().label }}</a>
 
@@ -30,7 +30,7 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
       title="Detail laporan"
       subtitle="Layanan fasilitas yang transparan, dari laporan hingga penyelesaian."
       [desktopOnly]="true"
-      [crumbs]="[{ label: 'Portal Pelapor' }, { label: 'Detail laporan' }]">
+      [crumbs]="[{ label: 'Portal Pelapor', link: '/portal' }, { label: 'Detail laporan' }]">
       <a class="btn d-only" [routerLink]="back().link"><app-icon name="left" [size]="16" [stroke]="2" /> {{ back().label }}</a>
     </app-page-head>
 
@@ -43,7 +43,15 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
         <article class="card main">
           <div class="top">
             <span class="ticket">{{ r.id }}</span>
-            <app-status-badge [status]="r.status" />
+            <div class="top-right">
+              <app-status-badge [status]="r.status" />
+              @if (isMine()) {
+                <!-- Edit dan hapus hanya untuk pemilik, selama laporan masih berstatus Dikirim (belum ditugaskan) -->
+                <div class="owner-btns" [attr.title]="editable() ? null : 'Laporan yang sudah diproses petugas tidak dapat diubah atau dihapus'">
+                  <button class="btn btn-danger-soft" type="button" [disabled]="!editable()" (click)="deleting.set(true)"><app-icon name="trash" [size]="16" /> Hapus</button>
+                </div>
+              }
+            </div>
           </div>
           <h2>{{ r.title }}</h2>
           <p class="where">
@@ -64,17 +72,19 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
             <p>{{ r.description }}</p>
           </div>
           <p class="reported">Dilaporkan pada {{ r.createdAt | date: "d MMMM y, HH.mm 'WIB'" }}</p>
-          <p class="likes d-only"><app-icon name="thumb" [size]="22" /> {{ r.likes }}</p>
-
-          @if (isMine()) {
-            <!-- Edit dan hapus hanya untuk pemilik, selama laporan masih berstatus Dikirim (belum ditugaskan) -->
-            <div class="owner">
-              <div class="owner-btns">
-                <button class="btn" type="button" [disabled]="!editable()" (click)="editing.set(true)"><app-icon name="edit" [size]="18" /> Edit</button>
-                <button class="btn btn-danger-soft" type="button" [disabled]="!editable()" (click)="deleting.set(true)"><app-icon name="trash" [size]="18" /> Hapus</button>
-              </div>
-              @if (!editable()) { <small>Laporan yang sudah diproses petugas tidak dapat diubah atau dihapus.</small> }
-            </div>
+          @if (likeable()) {
+            <!-- Laporan publik: suka bisa ditekan. Batal suka meminta konfirmasi. -->
+            <button class="likes like-btn" type="button" [class.on]="r.liked"
+              [disabled]="r.status === 'selesai' || likeBusy()"
+              [attr.aria-pressed]="r.liked"
+              [attr.title]="r.status === 'selesai' ? 'Laporan selesai tidak bisa disukai' : r.liked ? 'Batalkan suka' : 'Suka laporan ini'"
+              [attr.aria-label]="'Suka laporan ' + r.id + ', ' + r.likes + ' suka'"
+              (click)="onLike()">
+              <app-icon name="thumb" [size]="22" /> {{ r.likes }}
+              <span class="like-text">{{ r.status === 'selesai' ? 'Laporan selesai' : r.liked ? 'Anda mendukung' : 'Dukung laporan ini' }}</span>
+            </button>
+          } @else {
+            <p class="likes d-only"><app-icon name="thumb" [size]="22" /> {{ r.likes }}</p>
           }
 
           @if (neighbours(); as n) {
@@ -146,8 +156,8 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
       </p>
     }
 
-    @if (editing() && report(); as r) {
-      <app-edit-report-dialog [report]="r" (saved)="onSaved()" (closed)="editing.set(false)" />
+    @if (unliking() && report(); as r) {
+      <app-unlike-dialog [id]="r.id" [title]="r.title" (confirm)="confirmUnlike()" (cancel)="unliking.set(false)" />
     }
     @if (deleting() && report(); as r) {
       <app-dialog title="Hapus laporan ini?" confirmLabel="Ya, hapus" busyLabel="Menghapus…" [danger]="true"
@@ -156,10 +166,9 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
     }
   `,
   styles: `
-    .owner { order: 9; display: flex; flex-direction: column; gap: 8px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
-    .owner-btns { display: flex; gap: 12px; }
-    .owner-btns .btn { padding: 0 24px; }
-    .owner small { color: var(--muted); font-size: 12px; }
+    .top-right { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+    .owner-btns { display: flex; gap: 8px; }
+    .owner-btns .btn { min-height: 36px; padding: 0 14px; font-size: 12px; }
     .layout { display: grid; grid-template-columns: 1fr 383px; gap: 24px; align-items: start; }
     aside { display: grid; gap: 24px; }
     .main { display: flex; flex-direction: column; }
@@ -176,6 +185,13 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
     .desc p { font-size: 14px; line-height: 1.6; }
     .reported { order: 7; margin-top: 32px; color: var(--muted); font-size: 12px; }
     .likes { order: 8; display: flex; align-items: center; gap: 8px; margin-top: 32px; color: var(--muted); font-size: 14px; font-weight: 500; }
+    /* Di sisi kanan kartu supaya mudah dijangkau ibu jari, tombol berbingkai agar jelas bisa ditekan */
+    .like-btn { align-self: flex-end; min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--white); cursor: pointer; }
+    .like-btn:hover:not(:disabled) { background: var(--blue-50); border-color: var(--blue-600); color: var(--blue-600); }
+    .like-btn.on { border-color: var(--blue-600); background: var(--blue-600); color: var(--white); font-weight: 600; }
+    .like-btn.on:hover:not(:disabled) { background: #0759bb; color: var(--white); }
+    .like-btn:disabled { opacity: 0.55; cursor: default; }
+    .like-text { font-size: 12px; font-weight: 500; }
     aside h2 { font-size: 18px; font-weight: 600; }
     .muted { color: var(--muted); font-size: 13px; margin-top: 16px; }
 
@@ -212,7 +228,8 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
       .ticket { font-size: 13px; }
       .reported { margin-top: 16px; font-size: 11px; }
       .pager .btn { flex: 1; padding: 0 8px; }
-      .owner-btns .btn { flex: 1; padding: 0 12px; }
+      .top { align-items: flex-start; }
+      .top-right { align-items: flex-start; }
       .pager .pos { order: -1; width: 100%; }
       .pager { flex-wrap: wrap; }
       .timeline { margin-top: 20px; }
@@ -319,9 +336,48 @@ export class ReportDetail {
 
   reached = (status: StatusCode) => STEP_REACHED[status];
 
-  // ---------- Edit dan hapus (hanya pemilik, hanya selama status Dikirim) ----------
+  // ---------- Suka (hanya saat dibuka dari Laporan publik) ----------
+  likeable = computed(() => this.from()?.get('dari') === 'publik');
+  likeBusy = signal(false);
+  unliking = signal(false);
+
+  // Salin jumlah dan status suka terbaru dari daftar publik ke laporan yang sedang dibuka
+  private syncLike(id: string): void {
+    const fresh = this.service.publicReports().find((x) => x.id === id);
+    if (fresh) this.report.update((cur) => (cur && cur.id === id ? { ...cur, liked: fresh.liked, likes: fresh.likes } : cur));
+  }
+
+  // Memberi dukungan langsung diproses; batal dukung perlu konfirmasi
+  onLike(): void {
+    const r = this.report();
+    if (!r || r.status === 'selesai') return;
+    if (r.liked) this.unliking.set(true);
+    else void this.sendLike(r.id);
+  }
+
+  confirmUnlike(): void {
+    this.unliking.set(false);
+    const r = this.report();
+    if (r) void this.sendLike(r.id);
+  }
+
+  private async sendLike(id: string): Promise<void> {
+    if (this.likeBusy()) return;
+    this.likeBusy.set(true);
+    try {
+      const done = this.service.toggleLike(id);
+      this.syncLike(id);   // tampilan langsung berubah (service mengubah daftar lebih dulu)
+      await done;
+    } catch {
+      this.toast.show('Suka belum tersimpan. Coba lagi sebentar lagi.', 'error');
+    } finally {
+      this.syncLike(id);   // samakan dengan data akhir (atau batalkan bila gagal)
+      this.likeBusy.set(false);
+    }
+  }
+
+  // ---------- Hapus (hanya pemilik, hanya selama status Dikirim) ----------
   private toast = inject(ToastService);
-  editing = signal(false);
   deleting = signal(false);
   deleteBusy = signal(false);
   deleteError = signal('');
@@ -332,14 +388,6 @@ export class ReportDetail {
     return !!id && this.service.reports().some((x) => x.id === id);
   });
   editable = computed(() => this.report()?.status === 'dikirim');
-
-  onSaved(): void {
-    this.editing.set(false);
-    const r = this.report();
-    if (!r) return;
-    this.toast.show(`Laporan ${r.id} berhasil diperbarui.`);
-    void this.service.find(r.id).then((fresh) => { if (fresh && fresh.id === this.id()) this.report.set(fresh); });
-  }
 
   closeDelete(): void {
     this.deleting.set(false);

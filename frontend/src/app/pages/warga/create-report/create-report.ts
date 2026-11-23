@@ -24,7 +24,7 @@ import { PageHead } from '../../../shared/page-head/page-head';
     <app-page-head
       [title]="heading()"
       subtitle="Ceritakan kerusakan yang Anda temukan. Kolom bertanda * wajib diisi."
-      [crumbs]="[{ label: 'Portal Pelapor' }, { label: heading() }]" />
+      [crumbs]="[{ label: 'Portal Pelapor', link: '/portal' }, { label: heading() }]" />
 
     @if (showSummary()) {
       <p class="alert m-only" role="alert">
@@ -42,13 +42,13 @@ import { PageHead } from '../../../shared/page-head/page-head';
         <div class="grid">
           <!-- Pola tiap kolom: label + input + pesan error (tampil jika kolom salah) -->
           <div class="field full" [class.invalid]="invalid('title')">
-            <label for="title">Nama kerusakan *</label>
+            <label for="title">Nama kerusakan <span class="req" aria-hidden="true">*</span></label>
             <input id="title" formControlName="title" placeholder="Contoh: AC tidak dingin" [attr.aria-invalid]="invalid('title')">
             @if (invalid('title')) { <span class="error">Nama kerusakan wajib diisi.</span> }
           </div>
 
           <div class="field" [class.invalid]="invalid('building')">
-            <label for="building">Gedung *</label>
+            <label for="building">Gedung <span class="req" aria-hidden="true">*</span></label>
             <select id="building" formControlName="building" [class.empty]="!form.controls.building.value" [attr.aria-invalid]="invalid('building')">
               <option value="">Pilih gedung</option>
               @for (b of service.buildings(); track b) { <option [value]="b">{{ b }}</option> }
@@ -65,14 +65,14 @@ import { PageHead } from '../../../shared/page-head/page-head';
           </div>
 
           <div class="field half" [class.invalid]="invalid('room')">
-            <label for="room">Detail Lokasi *</label>
+            <label for="room">Detail Lokasi <span class="req" aria-hidden="true">*</span></label>
             <input id="room" formControlName="room" placeholder="Contoh: Ruang 3.12" [attr.aria-invalid]="invalid('room')">
             @if (invalid('room')) { <span class="error">Detail lokasi wajib diisi.</span> }
           </div>
 
           <!-- Unggah foto: input file disembunyikan secara visual, label jadi area klik -->
           <div class="field full" [class.invalid]="submitted() && !photoUrl()">
-            <span class="label">Foto kerusakan *</span>
+            <span class="label">Foto kerusakan <span class="req" aria-hidden="true">*</span></span>
             @if (photoUrl()) {
               <div class="preview">
                 <button class="thumb" type="button" (click)="openPreview()" aria-label="Perbesar foto kerusakan">
@@ -98,7 +98,7 @@ import { PageHead } from '../../../shared/page-head/page-head';
           </div>
 
           <div class="field full" [class.invalid]="invalid('description')">
-            <label for="description">Deskripsi kerusakan *</label>
+            <label for="description">Deskripsi kerusakan <span class="req" aria-hidden="true">*</span></label>
             <textarea id="description" formControlName="description" placeholder="Jelaskan kondisi, waktu kejadian, dan dampaknya…" [attr.aria-invalid]="invalid('description')"></textarea>
             @if (invalid('description')) { <span class="error">Deskripsi wajib diisi.</span> }
           </div>

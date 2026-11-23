@@ -94,7 +94,7 @@ const ROLES: Record<string, RoleView> = {
   `,
   styles: `
     /* Desktop: body setinggi layar sisa header. Sidebar diam, hanya .main yang scroll. */
-    .body { display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: calc(100vh - var(--header-h)); overflow: hidden; }
+    .body { display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: calc(100vh - var(--header-h)); height: calc(100dvh - var(--header-h)); overflow: hidden; }
     .sidebar { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 16px 16px 24px; background: var(--white); }
     .side-title { padding: 0 8px; margin-bottom: 17px; color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: 0.02em; line-height: 1.5; }
     .sidebar nav { display: flex; flex-direction: column; gap: 8px; }
@@ -108,7 +108,7 @@ const ROLES: Record<string, RoleView> = {
     .access strong { display: block; margin: 4px 0 2px; font-size: 12px; font-weight: 600; }
     .access p { color: var(--muted); font-size: 12px; line-height: 1.5; }
 
-    .main { min-height: 0; overflow-y: auto; padding: 16px 32px 48px; min-width: 0; }
+    .main { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px 32px 48px; min-width: 0; }
 
     .bottom-nav { display: none; }
 

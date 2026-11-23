@@ -35,7 +35,7 @@ const FORMS: Record<Choice, Form> = {
           <p class="sub now">Status saat ini: {{ label(r.status) }}</p>
 
           <div class="field" role="group" aria-labelledby="lbl-status">
-            <span class="label" id="lbl-status">Status baru *</span>
+            <span class="label" id="lbl-status">Status baru <span class="req" aria-hidden="true">*</span></span>
             <div class="choices">
               @for (c of choices; track c.key) {
                 <button type="button" class="btn" [class.btn-primary]="choice() === c.key" [attr.aria-pressed]="choice() === c.key" (click)="pick(c.key)">
@@ -46,13 +46,13 @@ const FORMS: Record<Choice, Form> = {
           </div>
 
           <div class="field" [class.invalid]="submitted() && !note().trim()">
-            <label for="note">{{ form().noteLabel }} *</label>
+            <label for="note">{{ form().noteLabel }} <span class="req" aria-hidden="true">*</span></label>
             <textarea id="note" rows="4" [value]="note()" (input)="note.set($any($event.target).value)"></textarea>
             @if (submitted() && !note().trim()) { <span class="error" role="alert">Catatan wajib diisi.</span> }
           </div>
 
           <div class="field" [class.invalid]="submitted() && !!photoError()">
-            <span class="label">{{ form().photoLabel }}{{ form().photoRequired ? ' *' : '' }}</span>
+            <span class="label">{{ form().photoLabel }} @if (form().photoRequired) { <span class="req" aria-hidden="true">*</span> }</span>
             <div class="photo-row">
               @if (preview()) {
                 <img class="thumb" [src]="preview()" alt="Pratinjau foto bukti">

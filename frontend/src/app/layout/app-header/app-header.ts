@@ -53,7 +53,7 @@ import { Icon } from '../../shared/icon/icon';
   styles: `
     :host { display: block; position: sticky; top: 0; z-index: 20; }
     .bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: var(--header-h); padding: 0 32px 0 40px; background: var(--yellow); }
-    .bar.compact { height: 108px; padding-right: 50px; }
+    .bar.compact { height: 80px; padding-right: 50px; }
     .brand { display: flex; align-items: center; gap: 12px; color: var(--black); }
     .brand img { width: 38px; height: 42px; object-fit: contain; }
     .brand strong { display: block; font-size: 15px; font-weight: 700; line-height: 1.3; }

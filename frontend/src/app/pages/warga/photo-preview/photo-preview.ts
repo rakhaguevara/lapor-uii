@@ -15,7 +15,7 @@ import { PageHead } from '../../../shared/page-head/page-head';
       title="Preview foto"
       subtitle="Layanan fasilitas yang transparan, dari laporan hingga penyelesaian."
       [mobileSubtitle]="mobileSub"
-      [crumbs]="[{ label: 'Portal Pelapor' }, { label: 'Preview foto' }]" />
+      [crumbs]="[{ label: 'Portal Pelapor', link: '/portal' }, { label: 'Preview foto' }]" />
 
     @if (draft; as d) {
       <section class="view">

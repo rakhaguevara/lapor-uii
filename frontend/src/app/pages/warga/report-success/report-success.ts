@@ -17,7 +17,7 @@ import { StatusBadge } from '../../../shared/status-badge/status-badge';
     <app-page-head
       title="Laporan berhasil dikirim"
       [subtitle]="firstName ? 'Terima kasih, ' + firstName + '. Laporan Anda sudah masuk ke antrean.' : ''"
-      [crumbs]="[{ label: 'Portal Pelapor' }, { label: 'Laporan berhasil dikirim' }]" />
+      [crumbs]="[{ label: 'Portal Pelapor', link: '/portal' }, { label: 'Laporan berhasil dikirim' }]" />
 
     @if (report(); as r) {
       <!-- Desktop -->

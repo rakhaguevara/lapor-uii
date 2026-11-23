@@ -207,24 +207,6 @@ export class ReportService {
     return toReport(res.data);
   }
 
-  // Mengubah laporan sendiri (PUT /api/reports). Nomor tiket tetap. Foto tidak diubah lewat sini.
-  async update(r: Report, data: { title: string; building: string; floor: string; room: string; description: string }): Promise<void> {
-    if (!this._buildings().length || !this._categories().length) await this.fetchAll();
-    const buildingUuid = this._buildings().find((b) => b.name === data.building)?.uuid;
-    if (!buildingUuid) throw new Error('Gedung tidak dikenali. Muat ulang halaman lalu pilih gedung lagi.');
-    // Kategori lama dipertahankan; kalau tidak ada di daftar, tebak dari judul seperti saat membuat laporan
-    const categoryUuid = this._categories().find((c) => c.name === r.category)?.uuid ?? this.categoryUuidFor(data.title);
-    await firstValueFrom(this.http.put('/api/reports', {
-      title: data.title.trim(),
-      building_uuid: buildingUuid,
-      category_uuid: categoryUuid,
-      floor: data.floor || null,
-      room_name: data.room.trim(),
-      description: data.description.trim(),
-    }, { params: { uuid: r.uuid } }));
-    await this.loadAll(true);
-  }
-
   // Menghapus laporan sendiri (DELETE /api/reports)
   async remove(r: Report): Promise<void> {
     await firstValueFrom(this.http.delete('/api/reports', { params: { uuid: r.uuid } }));

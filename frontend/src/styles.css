@@ -34,7 +34,7 @@
   --r-pill: 999px;
   --shadow-pill: 0 2px 8px rgb(20 36 62 / 16%);
 
-  --header-h: 114px;
+  --header-h: 80px;
   --sidebar-w: 232px;
 }
 
@@ -111,6 +111,8 @@ img { display: block; max-width: 100%; }
 /* Kolom form */
 .field { display: flex; flex-direction: column; gap: 8px; }
 .field > label, .field > .label { font-size: 12px; font-weight: 500; }
+/* Tanda * pada kolom wajib */
+.req { color: var(--red); }
 .field input, .field select, .field textarea {
   width: 100%; min-height: 44px; padding: 10px 14px;
   border: 1px solid var(--line); border-radius: var(--r-ctl);

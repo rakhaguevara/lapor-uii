@@ -1,7 +1,8 @@
-import { Component, DestroyRef, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { STATUS_LABEL, STATUS_OPTIONS, StatusCode, byPublicOrder } from '../../../core/reports/report.model';
 import { ReportService } from '../../../core/reports/report.service';
+import { UnlikeDialog } from '../../../shared/unlike-dialog/unlike-dialog';
 import { Icon } from '../../../shared/icon/icon';
 import { PageHead } from '../../../shared/page-head/page-head';
 import { ReportTable } from '../../../shared/report-table/report-table';
@@ -19,13 +20,13 @@ const WINDOW_DAYS = 30;  // halaman pertama laporan publik
 
 @Component({
   selector: 'app-reports-page',
-  imports: [RouterLink, Icon, PageHead, ReportTable],
+  imports: [RouterLink, Icon, PageHead, ReportTable, UnlikeDialog],
   template: `
     <app-page-head
       [title]="filtered() ? 'Hasil pencarian' : isPublic ? 'Laporan publik' : 'Laporan Saya'"
       subtitle="Layanan fasilitas yang transparan, dari laporan hingga penyelesaian."
       [mobileSubtitle]="isPublic ? 'Lihat perkembangan penanganan fasilitas di UII.' : 'Pantau semua laporan yang Anda buat.'"
-      [crumbs]="[{ label: 'Portal Pelapor' }, { label: filtered() ? 'Hasil pencarian' : isPublic ? 'Laporan publik' : 'Laporan Saya' }]">
+      [crumbs]="[{ label: 'Portal Pelapor', link: '/portal' }, { label: filtered() ? 'Hasil pencarian' : isPublic ? 'Laporan publik' : 'Laporan Saya' }]">
       @if (!isPublic) {
         <a class="btn btn-primary" routerLink="/laporan/baru"><app-icon name="plus" [size]="18" [stroke]="2.2" /> Buat laporan</a>
       }
@@ -116,16 +117,10 @@ const WINDOW_DAYS = 30;  // halaman pertama laporan publik
       }
     </section>
 
-    <!-- Konfirmasi batal dukung. <dialog> bawaan browser: Esc menutup, fokus terkunci di dalamnya -->
-    <dialog #confirmDlg class="dlg" aria-labelledby="dlg-title" (close)="pending.set(null)" (click)="onBackdrop($event)">
-      <span class="warn" aria-hidden="true">!</span>
-      <h2 id="dlg-title">Batalkan dukungan?</h2>
-      <p>Apakah kamu yakin ingin membatalkan dukungan untuk laporan <strong>{{ pending()?.id }} · {{ pending()?.title }}</strong>? Dukungan membantu laporan ini lebih cepat ditangani.</p>
-      <div class="acts">
-        <button class="btn btn-outline" type="button" (click)="confirmDlg.close()">Tidak, tetap dukung</button>
-        <button class="btn btn-danger" type="button" (click)="confirmUnlike()">Ya, batalkan</button>
-      </div>
-    </dialog>
+    <!-- Konfirmasi batal dukung: pop-up yang sama dengan di halaman detail -->
+    @if (pending(); as p) {
+      <app-unlike-dialog [id]="p.id" [title]="p.title" (confirm)="confirmUnlike()" (cancel)="pending.set(null)" />
+    }
 
     <p class="note" [class.d-only]="isPublic">
       {{ isPublic ? 'Laporan publik tidak menampilkan nama atau kontak pelapor.' : 'Hanya laporan yang Anda buat ditampilkan di sini.' }}
@@ -156,14 +151,6 @@ const WINDOW_DAYS = 30;  // halaman pertama laporan publik
     .pager { order: 8; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
     .pager .where { color: var(--muted); font-size: 13px; text-align: center; }
     .pager .btn:disabled { opacity: 0.5; cursor: default; }
-    .dlg { width: min(420px, calc(100vw - 32px)); padding: 28px 24px 24px; border: 0; border-radius: var(--r-card); background: var(--white); color: var(--ink); text-align: center; box-shadow: 0 20px 60px rgba(20, 36, 62, 0.25); }
-    .dlg::backdrop { background: rgba(20, 36, 62, 0.45); }
-    .dlg .warn { display: grid; place-items: center; width: 48px; height: 48px; margin: 0 auto 16px; border-radius: 50%; background: var(--amber-bg); color: var(--amber); font-size: 20px; font-weight: 700; }
-    .dlg h2 { font-size: 18px; font-weight: 700; }
-    .dlg p { margin-top: 10px; color: var(--muted); font-size: 14px; line-height: 1.6; }
-    .dlg strong { color: var(--ink); font-weight: 600; }
-    .dlg .acts { display: flex; justify-content: center; gap: 12px; margin-top: 24px; }
-    @media (max-width: 800px) { .dlg .acts { flex-direction: column-reverse; } .dlg .acts .btn { width: 100%; } }
     .alert { margin: 0 8px 12px; padding: 12px 16px; border-radius: var(--r-ctl); background: var(--red-bg); color: var(--red); font-size: 14px; }
 
     .privacy { margin-bottom: 16px; padding: 16px; border-radius: var(--r-card); background: var(--blue-50); }
@@ -291,13 +278,11 @@ export class ReportsPage {
 
   // Batal dukung perlu konfirmasi; memberi dukungan langsung diproses
   pending = signal<{ id: string; title: string } | null>(null);
-  private dlg = viewChild.required<ElementRef<HTMLDialogElement>>('confirmDlg');
 
   onLike(id: string): void {
     const r = this.list().find((x) => x.id === id);
     if (r?.liked) {
       this.pending.set({ id, title: r.title });
-      this.dlg().nativeElement.showModal();
     } else {
       void this.sendLike(id);
     }
@@ -305,13 +290,8 @@ export class ReportsPage {
 
   confirmUnlike(): void {
     const p = this.pending();
-    this.dlg().nativeElement.close();
+    this.pending.set(null);
     if (p) void this.sendLike(p.id);
-  }
-
-  // Klik di area gelap (di luar kotak) menutup dialog
-  onBackdrop(e: MouseEvent): void {
-    if (e.target === this.dlg().nativeElement) this.dlg().nativeElement.close();
   }
 
   private async sendLike(id: string): Promise<void> {

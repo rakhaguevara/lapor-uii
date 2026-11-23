@@ -18,22 +18,22 @@ import { errorMessage } from '../../../core/http/api-error';
       <p class="hint" style="margin-top: 14px">* Wajib diisi</p>
       <div class="fields">
         <div class="field" [class.invalid]="bad('name')">
-          <label for="name">Nama gedung *</label>
+          <label for="name">Nama gedung <span class="req" aria-hidden="true">*</span></label>
           <input id="name" formControlName="name" placeholder="Gedung Laboratorium Terpadu" [attr.aria-invalid]="bad('name')">
           @if (bad('name')) { <span class="error" role="alert">Nama gedung wajib diisi.</span> }
         </div>
         <div class="field" [class.invalid]="bad('code')">
-          <label for="code">Kode gedung *</label>
+          <label for="code">Kode gedung <span class="req" aria-hidden="true">*</span></label>
           <input id="code" formControlName="code" placeholder="GLT" maxlength="6" [attr.aria-invalid]="bad('code')">
           @if (bad('code')) { <span class="error" role="alert">Kode gedung wajib diisi.</span> }
         </div>
         <div class="field" [class.invalid]="bad('faculty')">
-          <label for="faculty">Fakultas / unit *</label>
+          <label for="faculty">Fakultas / unit <span class="req" aria-hidden="true">*</span></label>
           <input id="faculty" formControlName="faculty" placeholder="Fakultas Teknologi Industri" [attr.aria-invalid]="bad('faculty')">
           @if (bad('faculty')) { <span class="error" role="alert">Fakultas / unit wajib diisi.</span> }
         </div>
         <div class="field" [class.invalid]="bad('floors')">
-          <label for="floors">Jumlah lantai *</label>
+          <label for="floors">Jumlah lantai <span class="req" aria-hidden="true">*</span></label>
           <input id="floors" type="number" min="1" max="30" formControlName="floors" [attr.aria-invalid]="bad('floors')">
           @if (bad('floors')) { <span class="error" role="alert">Isi jumlah lantai (1–30).</span> }
         </div>
