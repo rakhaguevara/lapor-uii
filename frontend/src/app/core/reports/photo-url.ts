@@ -22,3 +22,11 @@ export function photoSrc(raw: unknown): string {
   }
   return BACKEND + (url.startsWith('/') ? url : '/' + url);
 }
+
+// Backend mengirim foto sebagai larik `photos` (tiap item punya photo_url / file_path); `photo_url` tingkat atas hanya ada di versi lama.
+export function reportPhoto(r: any): string {
+  const list: any[] = Array.isArray(r?.photos) ? r.photos : [];
+  const p = list.find((x) => x?.photo_type === 'KERUSAKAN') ?? list[0];
+  const fromFile = p?.file_path ? '/storage/' + String(p.file_path).replace(/^\/+/, '') : '';
+  return photoSrc(p?.photo_url || fromFile || r?.photo_url);
+}

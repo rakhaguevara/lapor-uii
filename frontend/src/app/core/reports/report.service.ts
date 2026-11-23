@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
-import { photoSrc } from './photo-url';
+import { reportPhoto } from './photo-url';
 import { CATEGORY_KEYWORDS, DEFAULT_CATEGORY, NewReport, Report, StatusCode } from './report.model';
 
 // Isi form yang disimpan sementara, supaya tidak hilang saat pelapor membuka preview foto lalu kembali.
@@ -15,7 +15,7 @@ export interface ReportDraft {
 // Bentuk data dari backend (lihat backend/server.js, fungsi dataLaporan)
 interface ApiReport {
   uuid: string; ticket_no: string; title: string; floor: string; room_name: string; description: string;
-  photo_url: string; status: string; created_at: string; like_count: number; is_liked: boolean;
+  photo_url?: string; photos?: { photo_url?: string; file_path?: string; photo_type?: string }[]; status: string; created_at: string; like_count: number; is_liked: boolean;
   building: { uuid: string; name: string }; category: { uuid: string; name: string };
 }
 interface Item { uuid: string; name: string }
@@ -69,7 +69,7 @@ function likeCount(r: ApiReport): number {
 function toReport(r: ApiReport): Report {
   return {
     uuid: r.uuid, id: r.ticket_no, title: r.title, building: r.building?.name ?? '', floor: r.floor, room: r.room_name,
-    category: r.category?.name ?? '', description: r.description, photoUrl: photoSrc(r.photo_url),
+    category: r.category?.name ?? '', description: r.description, photoUrl: reportPhoto(r),
     status: toStatus(r.status), createdAt: r.created_at, likes: likeCount(r), liked: !!r.is_liked,
   };
 }

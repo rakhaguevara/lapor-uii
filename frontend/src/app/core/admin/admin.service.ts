@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { Report } from '../reports/report.model';
-import { photoSrc } from '../reports/photo-url';
+import { reportPhoto } from '../reports/photo-url';
 
 /*
   SERVICE PETUGAS (Admin Unit dan Admin Universitas)
@@ -59,7 +59,7 @@ export function toAdminReport(r: Raw): AdminReport {
   return {
     uuid: r['uuid'], id: r['ticket_no'], title: r['title'] ?? '', building: r['building']?.name ?? '', buildingUuid: r['building']?.uuid ?? '',
     floor: r['floor'] ?? '', room: r['room_name'] ?? '', category: r['category']?.name ?? '', description: r['description'] ?? '',
-    photoUrl: photoSrc(r['photo_url']), status: toAdminStatus(r['status'], !!name), createdAt: r['created_at'],
+    photoUrl: reportPhoto(r), status: toAdminStatus(r['status'], !!name), createdAt: r['created_at'],
     likes: r['like_count'] ?? 0, liked: !!r['is_liked'], priority: r['priority'] ?? 'NORMAL',
     technician: name, technicianUuid: t?.uuid ?? r['technician_uuid'] ?? '', assignedAt: r['assigned_at'] ?? r['assignment']?.assigned_at ?? '',
     updatedAt: r['completed_at'] ?? r['updated_at'] ?? '',
