@@ -150,7 +150,11 @@ export class Shell {
   active = () => {
     const u = this.url();
     if (u.startsWith('/laporan/baru') || u.endsWith('/terkirim')) return '/laporan/baru';
-    if (u.startsWith('/laporan/')) return '/laporan-saya';
+    if (u.startsWith('/laporan/')) {
+      // Detail laporan mengikuti asalnya (?dari=publik), bukan selalu "Laporan Saya"
+      const dari = this.router.parseUrl(this.router.url).queryParams['dari'];
+      return dari === 'publik' ? '/laporan-publik' : dari === 'beranda' ? '/beranda' : '/laporan-saya';
+    }
     const hit = this.role().menu.filter((m) => (['/unit', '/univ', '/teknisi'].includes(m.path) ? u === m.path : u.startsWith(m.path)));
     return hit.sort((a, b) => b.path.length - a.path.length)[0]?.path ?? '';
   };

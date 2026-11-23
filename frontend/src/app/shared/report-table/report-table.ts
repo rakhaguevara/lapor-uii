@@ -132,7 +132,8 @@ import { StatusBadge } from '../status-badge/status-badge';
       .state .like:not(.static) { width: 100%; min-height: 44px; margin-left: 0; padding: 0 16px; gap: 8px; border: 1px solid var(--blue-600); background: var(--white); color: var(--blue-600); font-size: 14px; font-weight: 600; }
       .state .like.on { background: var(--blue-600); color: var(--white); }
       .state .like:disabled { border-color: var(--line); color: var(--muted); background: var(--bg); }
-      .detail-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; border-radius: 8px; background: var(--blue-600); color: var(--white); font-size: 14px; font-weight: 600; }
+      .detail-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; border: 1px solid var(--blue-600); border-radius: 8px; background: var(--white); color: var(--blue-600); font-size: 14px; font-weight: 600; }
+      .detail-btn:active { background: var(--blue-50); }
       .like-note { display: block; width: 100%; margin-top: -2px; color: var(--muted); font-size: 11px; line-height: 1.4; text-align: center; }
       .more { margin-top: 14px; font-size: 12.5px; }
     }
