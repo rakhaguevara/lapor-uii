@@ -70,12 +70,11 @@ export class TechService {
     await this.load();
   }
 
-  // Catatan penanganan (SELESAI) dikirim sebagai `notes`, alasan (MENUNGGU / TIDAK_DAPAT_DIPERBAIKI) sebagai `reason`.
-  // Nama kolom ini tebakan: dokumentasi API tidak menjelaskannya. Periksa saat terhubung ke backend.
+  // Catatan (untuk semua status) dikirim sebagai `note`, sesuai Swagger POST /reports/status.
   async setStatus(uuid: string, ticket: string, status: TechStatus, opts: { proof?: File | null; note?: string } = {}): Promise<void> {
     const form = new FormData();
     form.append('status', status);
-    if (opts.note) form.append(status === 'SELESAI' ? 'notes' : 'reason', opts.note);
+    if (opts.note) form.append('note', opts.note);
     if (opts.proof) { form.append('proof_photo', opts.proof); this.proofs.update((p) => ({ ...p, [ticket]: URL.createObjectURL(opts.proof!) })); }
     await this.post('/api/reports/status', uuid, form);
     await this.load();

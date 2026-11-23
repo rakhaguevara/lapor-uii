@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AdminService, STAFF_ROLES } from '../../../core/admin/admin.service';
 import { PageHead } from '../../../shared/page-head/page-head';
+import { errorMessage } from '../../../core/http/api-error';
 
 // TAMBAH / UBAH AKUN STAF (POST/PUT /admin/users). API wajib password saat tambah akun,
 // jadi ada kolom "Kata sandi awal" (tidak ada di desain). Cakupan = building_uuids.
@@ -91,8 +92,8 @@ export class AccountForm {
         buildingIds: v.scope ? [v.scope] : this.admin.buildings().filter((b) => b.active).map((b) => b.id),
       });
       this.router.navigate(['/univ/akun'], { queryParams: { tersimpan: v.name.trim() } });
-    } catch {
-      this.error.set('Akun belum tersimpan. Periksa isian lalu coba lagi.');
+    } catch (err) {
+      this.error.set(errorMessage(err, 'Akun belum tersimpan. Periksa isian lalu coba lagi.'));
     }
     this.busy.set(false);
   }

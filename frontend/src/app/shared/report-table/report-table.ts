@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, input, output } from '@angular/core';
+import { Component, ElementRef, afterRenderEffect, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Report } from '../../core/reports/report.model';
 
@@ -35,7 +35,7 @@ import { StatusBadge } from '../status-badge/status-badge';
         </span>
       </div>
       @for (r of reports(); track r.id) {
-        <article class="row">
+        <article class="row" [attr.data-id]="r.id">
           <a class="name" [routerLink]="[base(), r.id]">
             <span class="ticket">{{ r.id }}<span class="m-only"> · {{ r.createdAt | date: 'd MMM y' }}</span></span>
             <span class="title">{{ r.title }}</span>
@@ -80,6 +80,7 @@ import { StatusBadge } from '../status-badge/status-badge';
     .status-h { display: flex; align-items: center; justify-content: space-between; }
     .sort { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
     .sort:hover { background: var(--white); }
+    .row.rise { background: var(--blue-50); transition: background 1.2s ease-out; }
     .row { min-height: 78px; padding-block: 12px; }
     .name { display: flex; flex-direction: column; color: var(--ink); }
     .ticket { color: var(--blue-600); font-size: 11px; line-height: 1.5; }
@@ -117,6 +118,34 @@ export class ReportTable {
   showDetail = input(false);              // tautan "Lihat detail" di kartu HP
   sortable = input(false);                // tombol urut di kepala kolom Status
   emptyText = input('Belum ada laporan.');
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private tops = new Map<string, number>();
+
+  constructor() {
+    // Animasi FLIP: setelah urutan berubah, tiap baris meluncur dari posisi lamanya ke posisi baru
+    afterRenderEffect(() => {
+      this.reports();
+      const rows = Array.from(this.host.nativeElement.querySelectorAll<HTMLElement>('.row[data-id]'));
+      const next = new Map<string, number>();
+      const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      for (const el of rows) {
+        const id = el.dataset['id']!;
+        const top = el.offsetTop;
+        next.set(id, top);
+        const prev = this.tops.get(id);
+        if (prev === undefined || prev === top || reduce) continue;
+        const dy = prev - top;
+        el.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 500, easing: 'cubic-bezier(.2,.8,.2,1)' });
+        if (dy > 0) {
+          // naik ke atas: beri sorotan singkat
+          el.classList.add('rise');
+          setTimeout(() => el.classList.remove('rise'), 1200);
+        }
+      }
+      this.tops = next;
+    });
+  }
+
   like = output<string>();                // nomor tiket saat like ditekan
   sort = output<void>();                  // saat tombol urut ditekan
 }

@@ -37,7 +37,7 @@ import { AppHeader } from '../../../layout/app-header/app-header';
         </div>
 
         @if (failed()) {
-          <p class="alert" role="alert">Email atau kata sandi tidak sesuai. Periksa lagi lalu coba masuk kembali.</p>
+          <p class="alert" role="alert">{{ failed() }}</p>
         }
 
         <button class="btn btn-primary" type="submit" [disabled]="busy()">{{ busy() ? 'Memproses…' : 'Masuk' }}</button>
@@ -95,7 +95,7 @@ export class Login {
     this.submit();
   }
   submitted = signal(false);
-  failed = signal(false);
+  failed = signal('');
   busy = signal(false);
 
   invalid(name: 'email' | 'password'): boolean {
@@ -108,15 +108,19 @@ export class Login {
     if (this.form.invalid || this.busy()) return;
 
     this.busy.set(true);
-    this.failed.set(false);
+    this.failed.set('');
     const { email, password } = this.form.getRawValue();
-    if (await this.auth.login(email, password)) {
+    const loginError = await this.auth.login(email, password);
+    // Kosongkan isian setelah percobaan masuk, benar atau salah
+    this.form.reset();
+    this.submitted.set(false);
+    if (!loginError) {
       // ambil data dari backend sebelum masuk portal (pelapor dan petugas butuh data berbeda)
       const role = this.auth.roleCode();
       await (role === 'PELAPOR' ? this.reports.loadAll() : role === 'TEKNISI' ? this.tech.load() : this.admin.load(role));
       this.router.navigate(['/portal']);
     } else {
-      this.failed.set(true);
+      this.failed.set(loginError);
     }
     this.busy.set(false);
   }

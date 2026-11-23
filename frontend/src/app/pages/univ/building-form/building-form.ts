@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AdminService } from '../../../core/admin/admin.service';
 import { PageHead } from '../../../shared/page-head/page-head';
+import { errorMessage } from '../../../core/http/api-error';
 
 // TAMBAH / UBAH GEDUNG (alamat /univ/gedung/baru atau /univ/gedung/:id)
 @Component({
@@ -77,8 +78,8 @@ export class BuildingForm {
     try {
       await this.admin.saveBuilding({ ...v, name: v.name.trim(), code: v.code.trim().toUpperCase(), faculty: v.faculty.trim(), id: this.id || undefined });
       this.router.navigate(['/univ/gedung'], { queryParams: { tersimpan: v.name.trim() } });
-    } catch {
-      this.error.set('Gedung belum tersimpan. Periksa isian lalu coba lagi.');
+    } catch (err) {
+      this.error.set(errorMessage(err, 'Gedung belum tersimpan. Periksa isian lalu coba lagi.'));
     }
     this.busy.set(false);
   }

@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { STATUS_LABEL, STATUS_OPTIONS, StatusCode } from '../../../core/reports/report.model';
 import { ReportService } from '../../../core/reports/report.service';
@@ -158,6 +158,14 @@ export class ReportsPage {
   byStatus = signal(false); // true = urut berdasarkan status, false = terbaru dulu
   likeError = signal(false);
 
+  constructor() {
+    // Laporan publik: ambil ulang tiap 10 detik supaya like dari pengguna lain ikut menaikkan urutan
+    if (this.isPublic) {
+      const timer = setInterval(() => { if (!document.hidden) this.service.loadAll().catch(() => {}); }, 10000);
+      inject(DestroyRef).onDestroy(() => clearInterval(timer));
+    }
+  }
+
   filtered = computed(() => !!(this.query().trim() || this.status() || this.building()));
   statusText = computed(() => (this.status() ? STATUS_LABEL[this.status() as StatusCode] : 'Semua status'));
 
@@ -168,6 +176,10 @@ export class ReportsPage {
       .filter((r) => !q || r.id.toLowerCase().includes(q) || r.title.toLowerCase().includes(q) || r.room.toLowerCase().includes(q))
       .filter((r) => !this.status() || r.status === this.status())
       .filter((r) => !this.building() || r.building === this.building());
+    // Laporan publik: like terbanyak di atas (seri -> terbaru dulu)
+    if (this.isPublic && !this.byStatus()) {
+      return [...result].sort((a, b) => b.likes - a.likes || b.createdAt.localeCompare(a.createdAt));
+    }
     // STATUS_OPTIONS berurutan dikirim -> diproses -> selesai
     return this.byStatus() ? [...result].sort((a, b) => STATUS_OPTIONS.indexOf(a.status) - STATUS_OPTIONS.indexOf(b.status)) : result;
   });

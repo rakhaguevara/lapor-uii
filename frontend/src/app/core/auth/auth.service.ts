@@ -1,6 +1,7 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import { errorMessage } from '../http/api-error';
 
 // Bentuk data pengguna dari backend
 interface ApiUser { uuid?: string; full_name: string; role: string; reporter_type?: string }
@@ -39,18 +40,27 @@ export class AuthService {
 
   constructor(private http: HttpClient) {}
 
-  // Mengembalikan true jika email dan password benar
-  async login(email: string, password: string): Promise<boolean> {
+  // Mengembalikan null jika berhasil, atau pesan kegagalan untuk ditampilkan.
+  // 401 = email/kata sandi salah, 403 = akun dinonaktifkan (lihat Swagger POST /auth/login).
+  async login(email: string, password: string): Promise<string | null> {
     try {
       const res = await firstValueFrom(
         this.http.post<{ data: { token: string; user: ApiUser } }>('/api/auth/login', { email, password }),
       );
       this._token.set(res.data.token);
       this._user.set(res.data.user);
-      return true;
-    } catch {
-      return false;
+      return null;
+    } catch (err) {
+      if (err instanceof HttpErrorResponse && err.status === 401) return 'Email atau kata sandi tidak sesuai. Periksa lagi lalu coba masuk kembali.';
+      if (err instanceof HttpErrorResponse && err.status === 403) return 'Akun kamu dinonaktifkan. Hubungi admin untuk mengaktifkannya kembali.';
+      return errorMessage(err, 'Login belum berhasil. Coba lagi.');
     }
+  }
+
+  // Hapus sesi di sisi browser saja (dipakai saat token ditolak backend)
+  clear(): void {
+    this._token.set('');
+    this._user.set(null);
   }
 
   logout(): void {
