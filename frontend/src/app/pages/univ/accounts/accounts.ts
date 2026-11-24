@@ -27,7 +27,7 @@ import { Skeleton } from '../../../shared/skeleton/skeleton';
             <input id="q" type="search" placeholder="Cari nama atau email…" [value]="dq()" (input)="dq.set($any($event.target).value)" (keydown.enter)="apply()"></div>
           <div class="field"><label class="sr-only" for="st">Status</label>
             <select id="st" [value]="admin.statusDraft()" (change)="admin.statusDraft.set($any($event.target).value)">
-              <option value="aktif">Status aktif</option><option value="nonaktif">Nonaktif</option><option value="">Semua status</option></select></div>
+              <option value="">Semua status</option><option value="aktif">Status aktif</option><option value="nonaktif">Nonaktif</option></select></div>
           <button class="btn btn-primary" type="button" (click)="apply()">Cari</button>
         </div>
         <p class="sub m-only" style="margin-bottom: 12px">{{ list().length }} ditampilkan</p>
@@ -69,7 +69,8 @@ export class Accounts {
   list = computed(() => {
     const q = this.q().toLowerCase();
     return this.admin.accounts().filter((a) =>
-      (a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q)) && (!this.admin.statusFilter() || a.active === (this.admin.statusFilter() === 'aktif')));
+      (a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q)) && (!this.admin.statusFilter() || a.active === (this.admin.statusFilter() === 'aktif')))
+      .sort((x, y) => Number(y.active) - Number(x.active)); // nonaktif di paling bawah, tetap bisa diaktifkan lagi
   });
 
   roleName = (r: string) => STAFF_ROLES[r] ?? ROLE_LABEL[r] ?? r;

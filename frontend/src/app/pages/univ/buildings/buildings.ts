@@ -27,7 +27,7 @@ import { Skeleton } from '../../../shared/skeleton/skeleton';
             <input id="q" type="search" placeholder="Cari nama gedung…" [value]="dq()" (input)="dq.set($any($event.target).value)" (keydown.enter)="apply()"></div>
           <div class="field"><label class="sr-only" for="st">Status</label>
             <select id="st" [value]="admin.statusDraft()" (change)="admin.statusDraft.set($any($event.target).value)">
-              <option value="aktif">Status aktif</option><option value="nonaktif">Nonaktif</option><option value="">Semua status</option></select></div>
+              <option value="">Semua status</option><option value="aktif">Status aktif</option><option value="nonaktif">Nonaktif</option></select></div>
           <button class="btn btn-primary" type="button" (click)="apply()">Cari</button>
         </div>
         <p class="sub m-only" style="margin-bottom: 12px">{{ list().length }} ditampilkan</p>
@@ -69,7 +69,8 @@ export class Buildings {
   list = computed(() => {
     const q = this.q().toLowerCase();
     return this.admin.buildings().filter((b) =>
-      b.name.toLowerCase().includes(q) && (!this.admin.statusFilter() || b.active === (this.admin.statusFilter() === 'aktif')));
+      b.name.toLowerCase().includes(q) && (!this.admin.statusFilter() || b.active === (this.admin.statusFilter() === 'aktif')))
+      .sort((x, y) => Number(y.active) - Number(x.active)); // nonaktif di paling bawah, tetap bisa diaktifkan lagi
   });
 
   // Sakelar = nonaktifkan/aktifkan (data tidak dihapus, laporan lama tetap utuh)
@@ -84,9 +85,12 @@ export class Buildings {
     try {
       await this.admin.setBuildingActive(b, to);
       this.toast.show(`${b.name} berhasil ${to ? 'diaktifkan' : 'dinonaktifkan'}.`);
-    } catch {
+    } catch (e) {
+      // 422 = ditolak validasi backend; tampilkan alasannya bila ada
+      const body = (e as { error?: { message?: string; msg?: string; errors?: Record<string, string[]> } }).error;
+      const why = body?.errors ? Object.values(body.errors).flat().join(' ') : (body?.message ?? body?.msg ?? '');
       this.error.set('Perubahan belum tersimpan. Coba lagi.');
-      this.toast.show(`Gagal ${to ? 'mengaktifkan' : 'menonaktifkan'} ${b.name}. Coba lagi.`, 'error');
+      this.toast.show(`Gagal ${to ? 'mengaktifkan' : 'menonaktifkan'} ${b.name}.${why ? ' ' + why : ' Coba lagi.'}`, 'error');
     } finally { this.busyId.set(''); }
   }
 }

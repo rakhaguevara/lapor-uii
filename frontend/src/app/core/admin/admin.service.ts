@@ -86,8 +86,8 @@ export class AdminService {
   readonly accounts = signal<Account[]>([]);
 
   // Filter status dipakai bersama halaman Gedung dan Akun pengguna, supaya keduanya selalu menampilkan keadaan yang sama
-  readonly statusDraft = signal('aktif'); // isian di layar
-  readonly statusFilter = signal('aktif'); // yang dipakai daftar (berlaku setelah Cari)
+  readonly statusDraft = signal(''); // isian di layar
+  readonly statusFilter = signal(''); // yang dipakai daftar (berlaku setelah Cari)
 
   // false selama pemuatan pertama tiap bagian; dipakai halaman untuk kerangka pemuatan
   readonly reportsLoaded = signal(false);
@@ -173,12 +173,14 @@ export class AdminService {
     await this.loadBuildings();
   }
 
-  // Nonaktifkan = DELETE /locations; aktifkan lagi = PUT is_active
+  // Aktif/nonaktif hanya mengubah status lewat PUT is_active (bukan DELETE, supaya data gedung tidak hilang dari daftar)
   async setBuildingActive(b: Building, active: boolean): Promise<void> {
-    await firstValueFrom(active
-      ? this.http.put('/api/locations', { name: b.name, code: b.code, faculty: b.faculty, floor_count: b.floors, is_active: true }, { params: { uuid: b.id } })
-      : this.http.delete('/api/locations', { params: { uuid: b.id } }));
-    await Promise.all([this.loadBuildings(), this.loadAccounts().catch(() => {})]); // cakupan gedung di daftar akun ikut diperbarui
+    await firstValueFrom(this.http.put('/api/locations', { name: b.name, code: b.code, faculty: b.faculty, floor_count: b.floors, is_active: active }, { params: { uuid: b.id } }));
+    await this.loadBuildings();
+    // Jaga-jaga bila backend menyembunyikan gedung nonaktif dari daftar: tetap tampilkan dengan status yang baru
+    const cur = this.buildings();
+    this.buildings.set(cur.some((x) => x.id === b.id) ? cur.map((x) => (x.id === b.id ? { ...x, active } : x)) : [...cur, { ...b, active }]);
+    await this.loadAccounts().catch(() => {}); // cakupan gedung di daftar akun ikut diperbarui
   }
 
   // ---------- Akun ----------
