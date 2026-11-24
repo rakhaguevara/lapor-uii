@@ -85,6 +85,10 @@ export class AdminService {
   readonly buildings = signal<Building[]>([]);
   readonly accounts = signal<Account[]>([]);
 
+  // Filter status dipakai bersama halaman Gedung dan Akun pengguna, supaya keduanya selalu menampilkan keadaan yang sama
+  readonly statusDraft = signal('aktif'); // isian di layar
+  readonly statusFilter = signal('aktif'); // yang dipakai daftar (berlaku setelah Cari)
+
   // false selama pemuatan pertama tiap bagian; dipakai halaman untuk kerangka pemuatan
   readonly reportsLoaded = signal(false);
   readonly buildingsLoaded = signal(false);
@@ -174,7 +178,7 @@ export class AdminService {
     await firstValueFrom(active
       ? this.http.put('/api/locations', { name: b.name, code: b.code, faculty: b.faculty, floor_count: b.floors, is_active: true }, { params: { uuid: b.id } })
       : this.http.delete('/api/locations', { params: { uuid: b.id } }));
-    await this.loadBuildings();
+    await Promise.all([this.loadBuildings(), this.loadAccounts().catch(() => {})]); // cakupan gedung di daftar akun ikut diperbarui
   }
 
   // ---------- Akun ----------

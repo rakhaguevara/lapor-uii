@@ -3,7 +3,9 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { AdminService, Building } from '../../../core/admin/admin.service';
+import { ToastService } from '../../../core/ui/toast.service';
 import { Icon } from '../../../shared/icon/icon';
+import { Switch } from '../../../shared/switch/switch';
 import { PageHead } from '../../../shared/page-head/page-head';
 import { Skeleton } from '../../../shared/skeleton/skeleton';
 
@@ -11,7 +13,7 @@ import { Skeleton } from '../../../shared/skeleton/skeleton';
 // Setelah simpan, ?tersimpan=<nama> menampilkan kotak hijau di bawah daftar.
 @Component({
   selector: 'app-buildings',
-  imports: [RouterLink, Icon, PageHead, Skeleton],
+  imports: [RouterLink, Icon, PageHead, Skeleton, Switch],
   template: `
     <app-page-head title="Kelola gedung" subtitle="Kelola data gedung dan akses pengguna universitas."
       [crumbs]="[{ label: 'Portal Admin Universitas', link: '/univ' }, { label: 'Kelola gedung' }]">
@@ -19,20 +21,20 @@ import { Skeleton } from '../../../shared/skeleton/skeleton';
     </app-page-head>
 
     <div class="stack">
-      <section class="card tbl" style="padding: 16px; --cols: 2.2fr 1fr 1.4fr 1fr 96px">
+      <section class="card tbl" style="padding: 16px; --cols: 2.2fr 1fr 1.4fr 1fr 64px 64px">
         <div class="toolbar" style="padding: 4px 0 16px">
           <div class="field search grow"><label class="sr-only" for="q">Cari</label><app-icon name="search" [size]="16" />
             <input id="q" type="search" placeholder="Cari nama gedung…" [value]="dq()" (input)="dq.set($any($event.target).value)" (keydown.enter)="apply()"></div>
           <div class="field"><label class="sr-only" for="st">Status</label>
-            <select id="st" (change)="dst.set($any($event.target).value)">
+            <select id="st" [value]="admin.statusDraft()" (change)="admin.statusDraft.set($any($event.target).value)">
               <option value="aktif">Status aktif</option><option value="nonaktif">Nonaktif</option><option value="">Semua status</option></select></div>
           <button class="btn btn-primary" type="button" (click)="apply()">Cari</button>
         </div>
         <p class="sub m-only" style="margin-bottom: 12px">{{ list().length }} ditampilkan</p>
 
-        <div class="tr th d-only"><span>Nama gedung</span><span>Kode</span><span>Cakupan</span><span>Status</span><span></span></div>
+        <div class="tr th d-only"><span>Nama gedung</span><span>Kode</span><span>Cakupan</span><span>Status</span><span>Aktif</span><span></span></div>
         @if (!admin.buildingsLoaded()) {
-          <app-skeleton variant="rows" [count]="5" [cells]="5" cols="2.2fr 1fr 1.4fr 1fr 96px" />
+          <app-skeleton variant="rows" [count]="5" [cells]="6" cols="2.2fr 1fr 1.4fr 1fr 64px 64px" />
         } @else {
         @for (b of list(); track b.id) {
           <div class="tr row">
@@ -40,9 +42,11 @@ import { Skeleton } from '../../../shared/skeleton/skeleton';
             <span><span class="m-only mute">Kode </span>{{ b.code }}</span>
             <span class="mute">{{ b.faculty }}{{ b.floors ? ' · ' + b.floors + ' lantai' : '' }}</span>
             <span class="tag-on" [class.off]="!b.active">{{ b.active ? 'Aktif' : 'Nonaktif' }}</span>
+            <span class="acts">
+              <app-switch [checked]="b.active" [busy]="busyId() === b.id" [label]="(b.active ? 'Nonaktifkan ' : 'Aktifkan ') + b.name" (toggled)="toggle(b)" />
+            </span>
             <span class="acts d-only">
               <a class="icon-btn" [routerLink]="['/univ/gedung', b.id]" [attr.aria-label]="'Ubah ' + b.name"><app-icon name="edit" [size]="18" /></a>
-              <button class="icon-btn" type="button" [attr.aria-label]="(b.active ? 'Nonaktifkan ' : 'Aktifkan ') + b.name" (click)="toggle(b)"><app-icon name="trash" [size]="18" /></button>
             </span>
             <span class="acts m-only"><a class="btn" [routerLink]="['/univ/gedung', b.id]">Lihat / ubah gedung</a></span>
           </div>
@@ -58,22 +62,31 @@ import { Skeleton } from '../../../shared/skeleton/skeleton';
 export class Buildings {
   admin = inject(AdminService);
   saved = toSignal(inject(ActivatedRoute).queryParamMap.pipe(map((p) => p.get('tersimpan') ?? '')), { initialValue: '' });
-  // Filter baru berlaku setelah tombol Cari ditekan (atau Enter di kotak cari): q/st = yang dipakai daftar, d* = isian di layar
-  q = signal(''); st = signal('aktif');
-  dq = signal(''); dst = signal('aktif');
-  apply(): void { this.q.set(this.dq()); this.st.set(this.dst()); }
+  // Filter status dibagi dengan halaman Akun pengguna (lihat AdminService). Baru berlaku setelah Cari / Enter.
+  q = signal(''); dq = signal('');
+  apply(): void { this.q.set(this.dq()); this.admin.statusFilter.set(this.admin.statusDraft()); }
 
   list = computed(() => {
     const q = this.q().toLowerCase();
     return this.admin.buildings().filter((b) =>
-      b.name.toLowerCase().includes(q) && (!this.st() || b.active === (this.st() === 'aktif')));
+      b.name.toLowerCase().includes(q) && (!this.admin.statusFilter() || b.active === (this.admin.statusFilter() === 'aktif')));
   });
 
-  // Tombol tempat sampah = nonaktifkan (data tidak dihapus, laporan lama tetap utuh)
+  // Sakelar = nonaktifkan/aktifkan (data tidak dihapus, laporan lama tetap utuh)
+  private toast = inject(ToastService);
   error = signal('');
+  busyId = signal('');
 
   async toggle(b: Building): Promise<void> {
-    if (!confirm((b.active ? 'Nonaktifkan ' : 'Aktifkan ') + b.name + '?')) return;
-    try { this.error.set(''); await this.admin.setBuildingActive(b, !b.active); } catch { this.error.set('Perubahan belum tersimpan. Coba lagi.'); }
+    const to = !b.active;
+    if (!confirm((to ? 'Aktifkan ' : 'Nonaktifkan ') + b.name + '?')) return;
+    this.busyId.set(b.id); this.error.set('');
+    try {
+      await this.admin.setBuildingActive(b, to);
+      this.toast.show(`${b.name} berhasil ${to ? 'diaktifkan' : 'dinonaktifkan'}.`);
+    } catch {
+      this.error.set('Perubahan belum tersimpan. Coba lagi.');
+      this.toast.show(`Gagal ${to ? 'mengaktifkan' : 'menonaktifkan'} ${b.name}. Coba lagi.`, 'error');
+    } finally { this.busyId.set(''); }
   }
 }
